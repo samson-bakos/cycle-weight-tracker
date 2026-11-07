@@ -8,18 +8,20 @@ Files:
 - `sw.js`: optional; lets the Home Screen app open with no signal.
   `index.html` works without it.
 
-## Put it on her iPhone (about 5 minutes)
+**Live app:** https://samson-bakos.github.io/cycle-weight-tracker/
+(demo with fake data: https://samson-bakos.github.io/cycle-weight-tracker/?demo)
 
-1. **Host the folder.** Easiest: go to https://app.netlify.com/drop and drag this
-   whole folder in. You get a URL like `https://something-random.netlify.app`.
-   (GitHub Pages works too: push `index.html` + `sw.js` to a repo and turn on Pages.)
-   The URL only serves an empty app. Her data never goes there.
-2. **On her iPhone, open the URL in Safari** (not Chrome).
-3. **Share → Add to Home Screen** → Add.
-4. **From now on, open it only from the Home Screen icon.**
+Hosted on GitHub Pages from the `main` branch of this repo. The URL only serves
+the empty app. Her data never goes there.
+
+## Put it on her iPhone
+
+1. **On her iPhone, open the live URL in Safari** (not Chrome).
+2. **Share → Add to Home Screen** → Add.
+3. **From now on, open it only from the Home Screen icon.**
    ⚠️ The Home Screen app and Safari keep *separate* data. Anything typed in the
    Safari tab before adding it to the Home Screen won't carry over.
-5. First launch asks for the date her last period started and the typical cycle
+4. First launch asks for the date her last period started and the typical cycle
    length (26 days). Then she logs weights.
 
 ## Daily entry
@@ -45,9 +47,10 @@ Data lives only in the Home Screen app on her phone. Deleting the icon deletes t
 
 ## Updating the app later
 
-Re-drag the folder onto the same Netlify site (or push to the repo). Her data is
+Commit and push to `main`; GitHub Pages redeploys in about a minute. Her data is
 untouched by updates because it lives on the phone, not in the file. With `sw.js`,
-the new version shows the second time she opens the app.
+the new version shows the second time she opens the app. If a change ever needs
+a fresh cache, bump `CACHE` in `sw.js` (e.g. `cycle-weight-v2`).
 
 ## Preview with fake data
 
