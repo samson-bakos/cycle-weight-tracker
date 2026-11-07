@@ -1,0 +1,1409 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Cycle Weight">
+<meta name="theme-color" content="#f4f2ee" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#121211" media="(prefers-color-scheme: dark)">
+<title>Cycle Weight</title>
+<style>
+:root{
+  color-scheme: light;
+  --bg:#f4f2ee; --card:#fcfcfb; --field:#ffffff;
+  --ink:#1b1a18; --ink2:#52514e; --muted:#7d7a74;
+  --line:#e4e0d9; --line2:#d3cec5;
+  --main:#2a78d6; --main-soft:rgba(42,120,214,.12);
+  --target:#eb6834;
+  --raw:#9b968f; --wave:#6b6660; --period-band:rgba(232,123,164,.11);
+  --period:rgba(232,123,164,.20); --period-ink:#c2457a;
+  --prov:rgba(90,90,90,.09); --prov-line:rgba(90,90,90,.28);
+  --good:#0ca30c; --warn:#d08a00;
+  --btn:#1b1a18; --btn-ink:#ffffff;
+  --danger:#d03b3b;
+  --shadow:0 1px 2px rgba(0,0,0,.04),0 2px 10px rgba(0,0,0,.04);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme: dark;
+    --bg:#121211; --card:#1a1a19; --field:#232322;
+    --ink:#f0efec; --ink2:#c3c2b7; --muted:#8f8d86;
+    --line:#2c2b29; --line2:#3d3c39;
+    --main:#3987e5; --main-soft:rgba(57,135,229,.18);
+    --target:#d95926;
+    --raw:#6e6a64; --wave:#a9a49c; --period-band:rgba(213,81,129,.13);
+    --period:rgba(213,81,129,.22); --period-ink:#e87ba4;
+    --prov:rgba(255,255,255,.05); --prov-line:rgba(255,255,255,.18);
+    --good:#0ca30c; --warn:#fab219;
+    --btn:#f0efec; --btn-ink:#121211;
+    --danger:#e66767;
+    --shadow:none;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme: dark;
+  --bg:#121211; --card:#1a1a19; --field:#232322;
+  --ink:#f0efec; --ink2:#c3c2b7; --muted:#8f8d86;
+  --line:#2c2b29; --line2:#3d3c39;
+  --main:#3987e5; --main-soft:rgba(57,135,229,.18);
+  --target:#d95926;
+  --raw:#6e6a64; --wave:#a9a49c; --period-band:rgba(213,81,129,.13);
+  --period:rgba(213,81,129,.22); --period-ink:#e87ba4;
+  --prov:rgba(255,255,255,.05); --prov-line:rgba(255,255,255,.18);
+  --good:#0ca30c; --warn:#fab219;
+  --btn:#f0efec; --btn-ink:#121211;
+  --danger:#e66767;
+  --shadow:none;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font:15px/1.45 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",system-ui,sans-serif;
+  padding:max(14px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) calc(28px + env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));
+}
+main{max-width:760px;margin:0 auto}
+h1{font-size:22px;margin:4px 0 2px;letter-spacing:-.01em}
+h2{font-size:15px;margin:0 0 10px;font-weight:650}
+.sub{color:var(--ink2);font-size:13.5px}
+.muted{color:var(--muted)}
+.small{font-size:12.5px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin:12px 0;box-shadow:var(--shadow)}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.grow{flex:1 1 auto}
+label.f{display:block;font-size:12.5px;color:var(--ink2);margin:0 0 4px}
+input[type=text],input[type=date],input[type=number],select{
+  font:inherit;font-size:16px;color:var(--ink);background:var(--field);
+  border:1px solid var(--line2);border-radius:10px;padding:9px 10px;width:100%;min-height:42px;
+  -webkit-appearance:none;appearance:none;
+}
+input[type=date]{min-width:0}
+select{padding-right:34px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%238f8d86' stroke-width='1.8'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center}
+input:focus,select:focus{outline:2px solid var(--main);outline-offset:0;border-color:transparent}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.grid4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.grid4 input{padding:9px 8px}
+button{font:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.btn{background:var(--btn);color:var(--btn-ink);border:0;border-radius:10px;padding:10px 16px;font-weight:600;min-height:42px}
+.btn.wide{width:100%}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line2)}
+.btn.danger{background:transparent;color:var(--danger);border:1px solid var(--line2)}
+.btn.small{padding:6px 10px;min-height:34px;font-size:13.5px}
+.link{background:none;border:0;color:var(--main);padding:4px 0;font-weight:550}
+.pill{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line2);border-radius:999px;padding:8px 13px;min-height:40px;user-select:none;-webkit-user-select:none;background:var(--field)}
+.pill input{width:18px;height:18px;margin:0;accent-color:var(--period-ink)}
+.pill.on{border-color:var(--period-ink);background:var(--period)}
+.seg{display:inline-flex;border:1px solid var(--line2);border-radius:10px;overflow:hidden;background:var(--field)}
+.seg button{border:0;background:transparent;color:var(--ink2);padding:8px 12px;min-height:38px;font-size:14px}
+.seg button.on{background:var(--btn);color:var(--btn-ink);font-weight:600}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.chip{border:1px solid var(--line2);background:var(--field);color:var(--ink);border-radius:999px;padding:5px 11px;font-size:13px}
+.badge{display:inline-block;font-size:12px;padding:2px 8px;border-radius:999px;background:var(--main-soft);color:var(--ink)}
+.banner{border-radius:12px;padding:10px 12px;margin:10px 0;font-size:13.5px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;border:1px solid var(--line2);background:var(--card)}
+.banner .grow{min-width:180px}
+.banner.warn{border-color:var(--warn)}
+.err{color:var(--danger);font-size:13px;margin-top:6px;min-height:0}
+.headline{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px}
+.stat .k{font-size:12px;color:var(--ink2)}
+.stat .v{font-size:24px;font-weight:650;letter-spacing:-.01em;font-variant-numeric:tabular-nums}
+.stat .v small{font-size:13px;font-weight:500;color:var(--ink2)}
+.status{display:inline-flex;align-items:center;gap:6px;font-weight:600;font-size:14px;margin-top:2px}
+.status .dot{width:18px;height:18px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:700}
+.chartbox{position:relative;width:100%}
+.chartbox svg{display:block;width:100%;touch-action:pan-y}
+.readout{font-size:13px;color:var(--ink2);min-height:20px;margin:2px 0 6px;font-variant-numeric:tabular-nums}
+.readout b{color:var(--ink)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12.5px;color:var(--ink2);margin-top:8px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.sw{display:inline-block;width:18px;height:0;border-top:2px solid}
+table{width:100%;border-collapse:collapse;font-size:14px;font-variant-numeric:tabular-nums}
+th{font-size:12px;color:var(--ink2);text-align:left;font-weight:550;padding:6px 6px;border-bottom:1px solid var(--line)}
+td{padding:9px 6px;border-bottom:1px solid var(--line)}
+tr.click{cursor:pointer}
+tr.click:active td{background:var(--main-soft)}
+td.num,th.num{text-align:right}
+#history td:first-child{white-space:nowrap}
+#history td:last-child{overflow-wrap:anywhere}
+.ph-row{display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--line)}
+.ph-row:last-child{border-bottom:0}
+.ph-name{font-weight:600}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:flex-end;justify-content:center;z-index:50;padding:16px;padding-bottom:calc(16px + env(safe-area-inset-bottom))}
+.dialog{background:var(--card);color:var(--ink);border-radius:16px;padding:18px;max-width:420px;width:100%;box-shadow:0 10px 40px rgba(0,0,0,.25)}
+.dialog h3{margin:0 0 6px;font-size:17px}
+.dialog p{margin:0 0 14px;color:var(--ink2)}
+.dialog .row{justify-content:flex-end}
+@media (min-width:560px){.overlay{align-items:center}}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom));background:var(--btn);color:var(--btn-ink);padding:10px 16px;border-radius:999px;font-size:14px;z-index:60;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.show{opacity:1}
+details summary{cursor:pointer;font-weight:650;list-style:none}
+details summary::-webkit-details-marker{display:none}
+details summary::after{content:"▾";float:right;color:var(--muted)}
+details[open] summary::after{content:"▴"}
+hr{border:0;border-top:1px solid var(--line);margin:14px 0}
+.hidden{display:none!important}
+@media (max-width:420px){
+  .grid3{grid-template-columns:1fr 1fr}
+  .stat .v{font-size:21px}
+}
+@media print{ .noprint{display:none!important} body{background:#fff} .card{box-shadow:none} }
+</style>
+</head>
+<body>
+<main id="app"></main>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function(){
+'use strict';
+
+/* ============================================================
+   Constants & small helpers
+   ============================================================ */
+const DAY = 86400000;
+const LB_PER_KG = 2.2046226218;
+const PARAMS = new URLSearchParams(location.search);
+const DEMO = PARAMS.has('demo');
+const KEY = DEMO ? 'cycleWeightTracker.demo.v1' : 'cycleWeightTracker.v1';
+const K_HARM = 4;            // harmonics in the cycle-shape curve
+const MIN_CYCLES = 2;        // full cycles of weigh-ins before cycle adjustment turns on
+const SETTLE_DAYS = 10;      // weigh-ins before a phase's fitted line is shown at full strength
+const LATE_PAUSE = 7;        // days past predicted period before adjustment pauses
+const ON_TRACK_TOL = 0.15;   // lb/week dead-band for "on track"
+let JUMP_PENALTY = 2;        // days-of-evidence cost for a step at a phase start
+const RAMP_DAYS = 5;         // a phase-start step phases in over this many days
+const WEIGH_HOUR = 7;        // assumed morning weigh-in time
+const SLOT_HOUR = { b:8, l:12.5, d:19 };   // breakfast / lunch / dinner
+const MEAL_WINDOW_H = 120;   // a cheat meal's spike is modelled for 5 days
+const MEAL_TAU_DEFAULT = 36; // hours; spike shrinks to ~37% after this long (until learned)
+const TAU_GRID = [16,24,32,44,60,84];
+const MIN_MEALS_FOR_TAU = 5; // cheat meals with weigh-ins after, before fade speed is learned
+const GENERIC_MEAL_PENALTY = 0.5;
+const TYPE_MEAL_PENALTY = 2; // ≈ a type needs ~3 meals before its own size counts
+const SLOT_NAME = { b:'breakfast', l:'lunch', d:'dinner' };
+const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const DOW = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+const $ = (s, el=document) => el.querySelector(s);
+const $$ = (s, el=document) => Array.from(el.querySelectorAll(s));
+const pad = n => String(n).padStart(2,'0');
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function dnum(s){ const [y,m,d] = s.split('-').map(Number); return Math.round(Date.UTC(y,m-1,d)/DAY); }
+function dstr(n){ return new Date(n*DAY).toISOString().slice(0,10); }
+function todayStr(){ const t=new Date(); return t.getFullYear()+'-'+pad(t.getMonth()+1)+'-'+pad(t.getDate()); }
+function fmtD(n, dow){ const d=new Date(n*DAY); const yr = d.getUTCFullYear()!==new Date().getFullYear() ? ' '+d.getUTCFullYear() : ''; return (dow? DOW[d.getUTCDay()]+' ' : '') + MON[d.getUTCMonth()]+' '+d.getUTCDate()+yr; }
+function median(a){ if(!a.length) return NaN; const s=[...a].sort((x,y)=>x-y); const m=s.length>>1; return s.length%2 ? s[m] : (s[m-1]+s[m])/2; }
+function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+function plural(n, w){ return n+' '+w+(n===1?'':'s'); }
+function parseNum(t){ if(t==null) return NaN; t=String(t).trim().replace(',', '.'); if(t==='') return NaN; return Number(t); }
+
+/* ============================================================
+   Storage (this phone only) + backup
+   ============================================================ */
+let storageOK = true;
+function defaults(){
+  return { version:1, settings:{ unit:'lb', baseCycleLen:26, cycleLenOverride:null, fwdDays:7, backDays:7, lastBackup:null, created:todayStr() }, entries:{}, phases:[], mealTypes:[] };
+}
+function migrate(d){
+  if(!d || typeof d!=='object' || !d.entries || !Array.isArray(d.phases)) throw new Error('Not a Cycle Weight backup');
+  const base = defaults();
+  const out = { version:1, settings:Object.assign(base.settings, d.settings||{}), entries:{}, phases:[],
+    mealTypes: Array.isArray(d.mealTypes) ? d.mealTypes.filter(t=>t && t.id && t.name && t.id!=='generic').map(t=>({ id:String(t.id), name:String(t.name).slice(0,30) })) : [] };
+  for(const [k,v] of Object.entries(d.entries)){
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(k) || !v) continue;
+    const w = (v.w==null || v.w==='') ? null : Number(v.w);
+    const e = { w: (w!=null && isFinite(w)) ? w : null, ps: !!v.ps, pe: !!v.pe };
+    if(v.m && typeof v.m==='object'){
+      const g = key => { const r=v.m[key]; const x=Number(r); return (r!=null && r!=='' && isFinite(x)) ? x : null; };
+      const m = { kcal:g('kcal'), p:g('p'), c:g('c'), f:g('f') };
+      if(Object.values(m).some(x=>x!=null)) e.m = m;
+    }
+    if(Array.isArray(v.cm)){ const cm=v.cm.filter(m=>m && /^[bld]$/.test(m.s)).map(m=>({ t:String(m.t||'generic'), s:m.s })); if(cm.length) e.cm=cm; }
+    if(e.w!=null || e.ps || e.pe || e.m || e.cm) out.entries[k] = e;
+  }
+  for(const p of d.phases){
+    if(!p || !/^\d{4}-\d{2}-\d{2}$/.test(p.start)) continue;
+    out.phases.push({ id:p.id||uid(), name:String(p.name||'Phase').slice(0,40), start:p.start, target:Number(p.target)||0 });
+  }
+  out.phases.sort((a,b)=>a.start<b.start?-1:1);
+  return out;
+}
+function load(){
+  try{
+    const raw = localStorage.getItem(KEY);
+    if(!raw) return null;
+    return migrate(JSON.parse(raw));
+  }catch(e){ storageOK = false; console.error(e); return null; }
+}
+function save(){
+  try{ localStorage.setItem(KEY, JSON.stringify(S)); storageOK = true; }
+  catch(e){ storageOK = false; console.error(e); }
+}
+try{ if(navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(()=>{}); }catch(e){}
+
+let S = load();
+if(DEMO && !S){ S = makeDemo(); save(); }
+
+/* ============================================================
+   Units
+   ============================================================ */
+const unit = () => S ? S.settings.unit : 'lb';
+const toDisp = lb => unit()==='kg' ? lb/LB_PER_KG : lb;
+const fromDisp = v => unit()==='kg' ? v*LB_PER_KG : v;
+const fmtW = (lb, dp=1) => (lb==null || !isFinite(lb)) ? '—' : toDisp(lb).toFixed(dp);
+function fmtRate(lbwk, dp=2){
+  if(lbwk==null || !isFinite(lbwk)) return '—';
+  const v = toDisp(lbwk); const r = Math.abs(v).toFixed(dp);
+  if(Number(r)===0) return '0';
+  return (v>0?'+':'−')+r;
+}
+
+/* ============================================================
+   Cycle position: anchor F days forward from period start,
+   B days back from next start, stretch the middle.
+   Returns canonical position c in [0, Cref).
+   ============================================================ */
+function cyclePos(k, L, Cref, F, B){
+  let f=F, b=B;
+  if(L < F+B+1){ f = Math.max(1, Math.round(L*F/(F+B))); b = Math.max(0, L-f); }
+  if(k < f) return k;
+  if(k >= L-b) return Cref-(L-k);
+  const mid = L-b-f, cm = Cref-b-f;
+  return f + (k-f)*cm/mid;
+}
+
+/* ============================================================
+   Linear algebra (small dense systems)
+   ============================================================ */
+function gaussJordan(A, B){ // solves A X = B, B is matrix (n x m). returns X or null
+  const n=A.length, m=B[0].length;
+  const M = A.map((r,i)=>r.concat(B[i]));
+  for(let c=0;c<n;c++){
+    let p=c; for(let r=c+1;r<n;r++) if(Math.abs(M[r][c])>Math.abs(M[p][c])) p=r;
+    if(Math.abs(M[p][c])<1e-12) return null;
+    if(p!==c){ const t=M[c]; M[c]=M[p]; M[p]=t; }
+    const piv=M[c][c];
+    for(let k=c;k<n+m;k++) M[c][k]/=piv;
+    for(let r=0;r<n;r++){
+      if(r===c) continue; const f=M[r][c]; if(!f) continue;
+      for(let k=c;k<n+m;k++) M[r][k]-=f*M[c][k];
+    }
+  }
+  return M.map(r=>r.slice(n));
+}
+
+/* ============================================================
+   The model
+   weight(day) = level_phase + slope_phase * (day - phaseStart)
+               + cycleCurve(c(day))          [shared across phases]
+               + noise                       [Huber-robust, IRLS]
+   ============================================================ */
+function computeModel(){
+  const st = S.settings;
+  const todayN = dnum(todayStr());
+  const F = clampInt(st.fwdDays,1,10,7), B = clampInt(st.backDays,1,10,7);
+  const dates = Object.keys(S.entries).sort();
+  const starts = dates.filter(d=>S.entries[d].ps).map(dnum);
+
+  // typical cycle length
+  const lengths = [];
+  for(let i=1;i<starts.length;i++){ const L=starts[i]-starts[i-1]; if(L>=15 && L<=60) lengths.push(L); }
+  let typ, lenSource;
+  if(st.cycleLenOverride){ typ = clampInt(st.cycleLenOverride,15,60,26); lenSource = 'set manually'; }
+  else if(lengths.length>=2){ const rec=lengths.slice(-6); typ = Math.round(median(rec)); lenSource = 'from your last '+plural(rec.length,'cycle'); }
+  else { typ = clampInt(st.baseCycleLen,15,60,26); lenSource = 'starting estimate'; }
+  const Cref = Math.max(typ, F+B+2);
+
+  function cycleInfo(n){
+    let i=-1; for(let j=0;j<starts.length;j++){ if(starts[j]<=n) i=j; else break; }
+    if(i<0) return null;
+    const s=starts[i]; let k=n-s, L, complete, provisional=false, paused=false, predicted=null;
+    if(i+1<starts.length){
+      L = starts[i+1]-s; complete = true;
+      if(L>60) paused = k>=F;            // likely a missed log: only trust the first week
+    } else {
+      complete = false; predicted = s+typ;
+      L = Math.max(typ, Math.max(todayN, n)+1-s);   // late? assume due tomorrow
+      provisional = k>=F;
+      paused = (n-predicted) >= LATE_PAUSE;
+    }
+    k = Math.min(k, L-1);
+    return { i, s, k, L, c:cyclePos(k,L,Cref,F,B), complete, provisional, paused, predicted };
+  }
+
+  const ph = S.phases.map(p=>Object.assign({}, p, { sn:dnum(p.start) }));
+  const phaseIdx = n => { let idx=0; for(let j=0;j<ph.length;j++) if(ph[j].sn<=n) idx=j; return idx; };
+
+  const days = dates.filter(d=>S.entries[d].w!=null).map(d=>{ const n=dnum(d); return { n, d, w:S.entries[d].w, cyc:cycleInfo(n), p:phaseIdx(n) }; });
+
+  // full cycles with enough weigh-ins
+  let cyclesWithData=0;
+  for(let i=0;i<starts.length-1;i++){
+    const a=starts[i], b=starts[i+1]; if(b-a>60) continue;
+    const cnt = days.filter(x=>x.n>=a && x.n<b).length;
+    if(cnt >= Math.min(10, Math.ceil((b-a)*0.4))) cyclesWithData++;
+  }
+  const cycleActive = cyclesWithData >= MIN_CYCLES;
+
+  // design columns
+  const cols=[]; let anyPrev=false;
+  ph.forEach((p,j)=>{
+    const pd = days.filter(x=>x.p===j);
+    p.nW = pd.length;
+    p.firstN = pd.length? pd[0].n : null; p.lastN = pd.length? pd[pd.length-1].n : null;
+    if(pd.length>=1) cols.push({t:'L', j});
+    if(pd.length>=3 && p.lastN-p.firstN>=2) cols.push({t:'S', j});
+    if(pd.length>=3 && anyPrev) cols.push({t:'R', j});   // phase-start step, phased in over RAMP_DAYS
+    if(pd.length>=1) anyPrev=true;
+  });
+  const rampAt = (j,n) => Math.min(1, Math.max(0,(n-ph[j].sn+1)/RAMP_DAYS)) - 1;   // -1 at the switch → 0 after the ramp
+  if(cycleActive) for(let h=1;h<=K_HARM;h++){ cols.push({t:'C',h}); cols.push({t:'N',h}); }
+  const adjustable = x => cycleActive && x.cyc && !x.cyc.paused;
+
+  // ---- Cheat meals: a spike that fades to zero, A·exp(−h/τ), where h = hours from
+  // the meal to a 7am weigh-in. Because it MUST fade, it can only take out the
+  // temporary part (water, salt, glycogen, food in the gut); any lasting gain stays
+  // in the trend line. Generic amplitude G is shared; each named type gets G + T_type,
+  // with T_type shrunk toward 0 so a type needs ~3 meals to earn its own size.
+  const meals=[];
+  for(const d of dates){ const e=S.entries[d]; if(e.cm) for(const m of e.cm) meals.push({ n:dnum(d), d, s:m.s, hour:SLOT_HOUR[m.s] ?? SLOT_HOUR.d, t:m.t||'generic' }); }
+  const mealHoursAt = n => { const out=[]; for(const ml of meals){ const h=(n-ml.n)*24 + WEIGH_HOUR - ml.hour; if(h>0 && h<=MEAL_WINDOW_H) out.push({ml,h}); } return out; };
+  days.forEach(x=>{ x.meals = mealHoursAt(x.n); });
+  meals.forEach(ml=>{ ml.seen = days.some(x=>x.n>ml.n && x.n<=ml.n+3); });
+  const mealsSeen = meals.filter(ml=>ml.seen);
+  const typeIds = [...new Set(mealsSeen.map(m=>m.t))].filter(t=>t!=='generic');
+  if(mealsSeen.length){ cols.push({t:'G'}); typeIds.forEach(id=>cols.push({t:'T', id})); }
+  let tau = MEAL_TAU_DEFAULT, tauLearned = false;
+
+  function feat(x,c){
+    switch(c.t){
+      case 'L': return x.p===c.j ? 1 : 0;
+      case 'S': return x.p===c.j ? (x.n-ph[c.j].sn) : 0;
+      case 'R': return x.p===c.j ? rampAt(c.j, x.n) : 0;
+      case 'C': return adjustable(x) ? Math.cos(2*Math.PI*c.h*x.cyc.c/Cref) : 0;
+      case 'N': return adjustable(x) ? Math.sin(2*Math.PI*c.h*x.cyc.c/Cref) : 0;
+      case 'G': { let s=0; for(const o of x.meals) s+=Math.exp(-o.h/tau); return s; }
+      case 'T': { let s=0; for(const o of x.meals) if(o.ml.t===c.id) s+=Math.exp(-o.h/tau); return s; }
+    }
+  }
+  const pen = c => (c.t==='C'||c.t==='N') ? 0.2*Math.pow(c.h,3)   // smoothness: higher harmonics shrink more
+                 : c.t==='G' ? GENERIC_MEAL_PENALTY : c.t==='T' ? TYPE_MEAL_PENALTY : 1e-7;
+  // Phase transitions. Trend in phase j = L_j + R_j·(ramp−1) + S_j·(n−start):
+  // it starts at L_j − R_j and reaches L_j after RAMP_DAYS (water/glycogen don't
+  // arrive overnight). Two quadratic penalties:
+  //  • tie (very stiff): the line starts where the previous phase's line ended,
+  //    i.e. L_j − R_j = L_k + S_k·Δ  → continuity at the switch;
+  //  • step (soft, JUMP_PENALTY ≈ days of evidence): R_j shrinks toward 0, so a
+  //    small or brief step is mostly absorbed and only a sustained one survives.
+  //  Without R_j (too few days yet), the step penalty applies to L_j directly.
+  const cIdx = (t,j) => cols.findIndex(c=>c.t===t && c.j===j);
+  const jumpPen = [];   // [lambda, [[col, coef], ...]]
+  for(let j=1;j<ph.length;j++){
+    const lj=cIdx('L',j); if(lj<0) continue;
+    let k=j-1; while(k>=0 && cIdx('L',k)<0) k--; if(k<0) continue;
+    const prevEnd=[[cIdx('L',k),1]]; const sk=cIdx('S',k);
+    if(sk>=0) prevEnd.push([sk, ph[j].sn-ph[k].sn]);
+    const rj=cIdx('R',j);
+    if(rj>=0){
+      jumpPen.push([1e4, [[lj,1],[rj,-1], ...prevEnd.map(([c,v])=>[c,-v])]]);
+      jumpPen.push([JUMP_PENALTY, [[rj,1]]]);
+    } else {
+      jumpPen.push([JUMP_PENALTY, [[lj,1], ...prevEnd.map(([c,v])=>[c,-v])]]);
+    }
+  }
+
+  const P = cols.length, nD = days.length;
+  // Huber-robust penalized least squares via IRLS (uses the current tau)
+  function runFit(){
+    const f = { beta:new Array(P).fill(0), A:null, wts:new Array(nD).fill(1), resid:new Array(nD).fill(0), sigma:NaN };
+    if(!(P>0 && nD>0)) return f;
+    const X = days.map(x=>cols.map(c=>feat(x,c)));
+    const y = days.map(x=>x.w);
+    for(let it=0; it<50; it++){
+      const A = Array.from({length:P},()=>new Array(P).fill(0));
+      const bb = Array.from({length:P},()=>[0]);
+      for(let i=0;i<nD;i++){
+        const xi=X[i], wi=f.wts[i];
+        for(let a=0;a<P;a++){ const xa=xi[a]; if(!xa) continue; bb[a][0]+=wi*xa*y[i]; for(let b=a;b<P;b++){ if(xi[b]) A[a][b]+=wi*xa*xi[b]; } }
+      }
+      for(let a=0;a<P;a++){ for(let b=0;b<a;b++) A[a][b]=A[b][a]; A[a][a]+=pen(cols[a]); }
+      for(const [lam,v] of jumpPen) for(const [a,va] of v) for(const [b,vb] of v) A[a][b]+=lam*va*vb;
+      const sol = gaussJordan(A, bb); if(!sol) break;
+      f.A = A; f.beta = sol.map(r=>r[0]);
+      for(let i=0;i<nD;i++){ let s=0; for(let a=0;a<P;a++) s+=X[i][a]*f.beta[a]; f.resid[i]=y[i]-s; }
+      const medR = median(f.resid);
+      f.sigma = Math.max(0.2, 1.4826*median(f.resid.map(r=>Math.abs(r-medR))));
+      const cH = 1.345*f.sigma;
+      let maxDw=0;
+      for(let i=0;i<nD;i++){ const a=Math.abs(f.resid[i]); const nw = a<=cH ? 1 : cH/a; maxDw=Math.max(maxDw,Math.abs(nw-f.wts[i])); f.wts[i]=nw; }
+      if(it>2 && maxDw<1e-5) break;
+    }
+    return f;
+  }
+  let fit = runFit();
+  // Learn how fast her cheat-meal spikes fade once there are enough of them
+  if(mealsSeen.length >= MIN_MEALS_FOR_TAU){
+    const c0 = 1.345*fit.sigma, huber = r => { const a=Math.abs(r); return a<=c0 ? a*a/2 : c0*(a-c0/2); };
+    let best = null;
+    for(const t of TAU_GRID){ tau=t; const f=runFit(); const obj=f.resid.reduce((s,r)=>s+huber(r),0); if(!best || obj<best.obj) best={obj,t,f}; }
+    tau = best.t; fit = best.f; tauLearned = true;
+  }
+  const beta = fit.beta, wts = fit.wts, resid = fit.resid, sigma = fit.sigma;
+  let cov=null, rho=0;
+  if(fit.A){
+    // uncertainty
+    let sw=0, swr=0; for(let i=0;i<nD;i++){ sw+=wts[i]; swr+=wts[i]*resid[i]*resid[i]; }
+    const s2 = swr/Math.max(1, sw-P);
+    const I = Array.from({length:P},(_,i)=>Array.from({length:P},(_,j)=>i===j?1:0));
+    const inv = gaussJordan(fit.A, I);
+    if(inv) cov = inv.map(r=>r.map(v=>v*s2));
+    // lag-1 autocorrelation of residuals on consecutive days (water retention is "sticky")
+    let num=0, den=0;
+    for(let i=0;i<nD;i++){ den+=resid[i]*resid[i]; if(i+1<nD && days[i+1].n-days[i].n===1) num+=resid[i]*resid[i+1]; }
+    rho = den>0 ? Math.min(0.85, Math.max(0, num/den)) : 0;
+  }
+  const inflate = Math.sqrt((1+rho)/(1-rho));
+
+  const coefC = new Array(K_HARM+1).fill(0), coefN = new Array(K_HARM+1).fill(0);
+  cols.forEach((c,a)=>{ if(c.t==='C') coefC[c.h]=beta[a]; if(c.t==='N') coefN[c.h]=beta[a]; });
+  const curve = c => { let v=0; for(let h=1;h<=K_HARM;h++){ const t=2*Math.PI*h*c/Cref; v+=coefC[h]*Math.cos(t)+coefN[h]*Math.sin(t); } return v; };
+  const effectAt = x => adjustable(x) ? curve(x.cyc.c) : 0;
+
+  const gI = cols.findIndex(c=>c.t==='G'), G = gI>=0 ? beta[gI] : 0;
+  const typeAmp = { generic:G };
+  cols.forEach((c,a)=>{ if(c.t==='T') typeAmp[c.id] = G + beta[a]; });
+  const mealSum = list => list.reduce((s,o)=>s + (typeAmp[o.ml.t] ?? G)*Math.exp(-o.h/tau), 0);
+  const mealEffN = n => mealsSeen.length ? mealSum(mealHoursAt(n)) : 0;
+  const mealCounts = {}; mealsSeen.forEach(m=>{ mealCounts[m.t]=(mealCounts[m.t]||0)+1; });
+
+  ph.forEach((p,j)=>{
+    p.level=null; p.slope=null; p.seSlope=null; p.ramp=0;
+    cols.forEach((c,a)=>{
+      if(c.j!==j) return;
+      if(c.t==='L') p.level=beta[a];
+      if(c.t==='R') p.ramp=beta[a];
+      if(c.t==='S'){ p.slope=beta[a]; if(cov) p.seSlope=Math.sqrt(Math.max(0,cov[a][a]))*inflate; }
+    });
+  });
+  const trendAt = (j,n) => { const p=ph[j]; if(!p || p.level==null) return null; return p.level + (p.slope||0)*(n-p.sn) + (p.ramp ? p.ramp*rampAt(j,n) : 0); };
+
+  days.forEach(x=>{ x.effC = effectAt(x); x.effM = mealsSeen.length ? mealSum(x.meals) : 0; x.eff = x.effC + x.effM; x.adj = x.w - x.eff; });
+  // trailing 7-day mean of raw weight
+  for(let i=0;i<days.length;i++){ let s=0,c=0; for(let j=i;j>=0 && days[i].n-days[j].n<7;j--){ s+=days[j].w; c++; } days[i].avg7 = s/c; }
+
+  // phase start points: median of 7 days of cycle-adjusted weight before the switch
+  const adjByN = new Map(days.map(x=>[x.n, x.adj]));
+  ph.forEach((p,j)=>{
+    // Preferred: where the previous phase's cycle-adjusted trend line ended (uses all of its data)
+    let k=j-1; while(k>=0 && ph[k].level==null) k--;
+    if(cycleActive && k>=0 && ph[k].slope!=null && ph[k].nW>=SETTLE_DAYS){ p.anchor=trendAt(k,p.sn); p.anchorSrc='prevTrend'; return; }
+    // Otherwise: median of 7 days of cycle-adjusted weight before (or, for the first phase, after) the switch
+    const pre=[], post=[];
+    for(let n=p.sn-7;n<p.sn;n++) if(adjByN.has(n)) pre.push(adjByN.get(n));
+    for(let n=p.sn;n<p.sn+7;n++) if(adjByN.has(n)) post.push(adjByN.get(n));
+    p.anchor = pre.length>=3 ? median(pre) : (post.length ? median(post) : (pre.length ? median(pre) : null));
+    p.anchorSrc = pre.length>=3 ? 'pre' : (post.length ? 'post' : (pre.length ? 'pre' : null));
+  });
+  const targetAt = (j,n) => { const p=ph[j]; if(!p || p.anchor==null) return null; return p.anchor + (p.target/7)*(n-p.sn); };
+
+  const lastStart = starts.length ? starts[starts.length-1] : null;
+  const cur = lastStart==null ? null : (()=>{
+    const predicted = lastStart+typ;
+    return { start:lastStart, day:todayN-lastStart+1, predicted, lateBy: todayN-predicted+1, paused: todayN-predicted>=LATE_PAUSE, provFrom:lastStart+F };
+  })();
+
+  const allN = dates.map(dnum).concat(ph.map(p=>p.sn));
+  return {
+    todayN, F, B, typ, lenSource, Cref, lengths, starts, days, ph, cycleActive, cyclesWithData,
+    curve, trendAt, targetAt, sigma, rho, cur, curPhase: ph.length ? phaseIdx(todayN) : -1,
+    phaseIdx, firstN: allN.length ? Math.min(...allN) : todayN, cycleInfo,
+    meals, mealsSeen, typeAmp, tau, tauLearned, mealEffN, mealCounts
+  };
+}
+function clampInt(v, lo, hi, def){ v = Math.round(Number(v)); return isFinite(v) ? Math.min(hi, Math.max(lo, v)) : def; }
+
+/* ============================================================
+   Demo data (only with ?demo — separate storage, never touches real data)
+   ============================================================ */
+function makeDemo(opts={}){
+  let seed = opts.seed ?? 532645;   // a typical draw (estimates land near the true rates)
+  const rnd = () => { seed|=0; seed=seed+0x6D2B79F5|0; let t=Math.imul(seed^seed>>>15,1|seed); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; };
+  const gauss = () => { let u=0,v=0; while(!u) u=rnd(); while(!v) v=rnd(); return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v); };
+  const today = dnum(todayStr()), t0 = today-165;
+  const lens = [26,25,28,24,27,26,29,25,27,26];
+  const starts=[]; let s=t0-9, li=0; while(s<=today+40){ starts.push(s); s+=lens[li++%lens.length]; }
+  const truth = [
+    { name:'Maintain', start:t0, target:0, slope:-0.10/7, jump:0 },
+    { name:'Cut', start:t0+62, target:-0.75, slope:-0.85/7, jump:0 },
+    { name:'Reverse diet', start:today-(opts.revDays ?? 27), target:0.25, slope:0.15/7, jump: opts.jump ?? (PARAMS.has('jump') ? Number(PARAMS.get('jump'))||0 : 0.8) },
+  ];
+  const RAMP = 5; // a carb-up adds water/glycogen over several days, not overnight
+  // Cheat meals (~weekly): a fading spike A·exp(−h/30h) + a small lasting gain (real surplus)
+  const MEAL_TRUTH = { generic:1.8, sushi:3.2, nandos:2.4 }, TAU_TRUE = 30, KEEP = 0.15;
+  const dMeals = []; const noMeals = opts.meals===false;
+  for(let n=t0+4; !noMeals && n<today-1; n += 5 + Math.floor(rnd()*6)){
+    const r=rnd(), t = r<0.4 ? 'generic' : r<0.7 ? 'sushi' : 'nandos';
+    const q=rnd(), s = q<0.6 ? 'd' : q<0.9 ? 'l' : 'b';
+    dMeals.push({ n, t, s });
+  }
+  const mealTrue = n => { let v=0; for(const ml of dMeals){ const h=(n-ml.n)*24 + 7 - ({b:8,l:12.5,d:19})[ml.s];
+    if(h>0) v += KEEP + (h<=120 ? MEAL_TRUTH[ml.t]*Math.exp(-h/TAU_TRUE) : 0); } return v; };
+  const Cref=26;
+  const eff = c => { const dd=(a,b)=>{ const d=Math.abs(a-b); return Math.min(d, Cref-d); };
+    return 2.2*Math.exp(-Math.pow(dd(c,23.3),2)/(2*2.3*2.3)) - 0.8*Math.exp(-Math.pow(dd(c,9),2)/(2*3*3)); };
+  const d = defaults(); d.settings.created = dstr(t0); d.settings.lastBackup = dstr(today-2);
+  let level = 146;
+  const trendLevel = n => { let v=level;
+    for(let j=0;j<truth.length;j++){ const p=truth[j], end = j+1<truth.length ? truth[j+1].start : Infinity;
+      if(n<end) return v + p.jump*Math.min(1,(n-p.start+1)/RAMP) + p.slope*(n-p.start);
+      v += p.jump + p.slope*(end-p.start);
+    } return v; };
+  for(let n=t0;n<=today;n++){
+    let i=-1; for(let j=0;j<starts.length;j++) if(starts[j]<=n) i=j;
+    const L = starts[i+1]-starts[i], k = n-starts[i];
+    const c = cyclePos(k,L,Cref,7,7);
+    const isStart = k===0, isEnd = k===4;
+    const skip = n!==today && rnd()<0.12;
+    let w = trendLevel(n) + eff(c) + mealTrue(n) + 0.55*gauss();
+    if(rnd()<0.03) w += 2.5 + 1.5*rnd();
+    w = Math.round(w*5)/5;
+    const food = [{kcal:1900,p:130,c:200,f:65},{kcal:1500,p:140,c:140,f:50},{kcal:1700,p:140,c:180,f:55}][n<truth[1].start?0:n<truth[2].start?1:2];
+    if(!skip || isStart || isEnd) d.entries[dstr(n)] = { w: skip?null:w, ps:isStart, pe:isEnd, ...(skip?{}:{m:{...food}}) };
+  }
+  // the period start before the window
+  d.entries[dstr(starts[0])] = { w:null, ps:true, pe:false };
+  d.phases = truth.map(p=>({ id:uid(), name:p.name, start:dstr(p.start), target:p.target }));
+  d.mealTypes = [{ id:'sushi', name:'Sushi' }, { id:'nandos', name:'Nando’s' }];
+  if(!opts.unlogged) for(const ml of dMeals){ const k=dstr(ml.n); const e=d.entries[k] || (d.entries[k]={ w:null, ps:false, pe:false }); e.cm=(e.cm||[]).concat([{ t:ml.t, s:ml.s }]); }
+  // effective true rates include the lasting part of cheat meals
+  const effRate = p => { const end = truth.indexOf(p)+1<truth.length ? truth[truth.indexOf(p)+1].start : today;
+    const kept = dMeals.filter(ml=>ml.n>=p.start+RAMP && ml.n<end).length*KEEP; return (p.slope*(end-p.start-RAMP) + kept)/(end-p.start-RAMP)*7; };
+  window.__demoMeals = { truthNextMorning: Object.fromEntries(Object.entries(MEAL_TRUTH).map(([k,A])=>[k,+(A*Math.exp(-12/TAU_TRUE)).toFixed(2)])), tau:TAU_TRUE, count:dMeals.length,
+    effRates: truth.map(p=>+effRate(p).toFixed(3)) };
+  window.__demoTruth = truth.map(p=>({ name:p.name, slopePerWeek:+(p.slope*7).toFixed(3), jump:p.jump }));
+  return d;
+}
+
+/* ============================================================
+   UI state
+   ============================================================ */
+const ui = { range:'phase', historyLimit:30, editPhase:null, hoverN:null, setupUnit:'lb', formDir:'maint', setupDir:'maint' };
+let M = null;
+
+/* ============================================================
+   Dialogs & toast
+   ============================================================ */
+function dialog({title, body, ok='OK', cancel='Cancel', danger=false}){
+  return new Promise(res=>{
+    const o=document.createElement('div'); o.className='overlay';
+    o.innerHTML = `<div class="dialog" role="dialog" aria-modal="true"><h3>${esc(title)}</h3><p>${body}</p><div class="row">${cancel?`<button class="btn ghost" data-a="0">${esc(cancel)}</button>`:''}<button class="btn ${danger?'danger':''}" data-a="1">${esc(ok)}</button></div></div>`;
+    o.addEventListener('click', e=>{ const a=e.target.closest('[data-a]'); if(a){ o.remove(); res(a.dataset.a==='1'); } else if(e.target===o && cancel){ o.remove(); res(false); } });
+    document.body.appendChild(o); $('[data-a="1"]',o).focus();
+  });
+}
+let toastT;
+function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),2200); }
+
+/* ============================================================
+   Setup screen (first launch)
+   ============================================================ */
+function renderSetup(){
+  const t = todayStr();
+  $('#app').innerHTML = `
+  <h1>Cycle Weight</h1>
+  <div class="sub">Weight trends with your cycle's ups and downs taken out.</div>
+  ${!storageOK ? storageBanner() : ''}
+  ${iosTip()}
+  <div class="card">
+    <h2>Two quick things to get started</h2>
+    <label class="f" for="su-ps">Date your last period started</label>
+    <input type="date" id="su-ps" max="${t}">
+    <div style="height:10px"></div>
+    <label class="f" for="su-len">Typical cycle length (days)</label>
+    <input type="number" id="su-len" value="26" min="15" max="60" inputmode="numeric">
+    <div class="small muted" style="margin-top:4px">This is a starting estimate. The app updates it from the periods you log.</div>
+    <hr>
+    <h2>Current goal</h2>
+    <div class="row" style="margin-bottom:10px">
+      <span class="small muted">Units</span>
+      <div class="seg" id="su-unit"><button data-u="lb" class="on">lb</button><button data-u="kg">kg</button></div>
+    </div>
+    ${goalFields('su')}
+    <div class="err" id="su-err"></div>
+    <div style="height:12px"></div>
+    <button class="btn wide" id="su-go">Start tracking</button>
+    <div style="text-align:center;margin-top:10px"><button class="link" id="su-import">Restore from a backup file instead</button></div>
+    <input type="file" id="su-file" accept=".json,application/json" class="hidden">
+  </div>`;
+  wireGoalFields('su', ui.setupDir, v=>ui.setupDir=v);
+  $$('#su-unit button').forEach(b=>b.onclick=()=>{ ui.setupUnit=b.dataset.u; $$('#su-unit button').forEach(x=>x.classList.toggle('on',x===b)); $$('.su-unit-l').forEach(x=>x.textContent=ui.setupUnit); });
+  $('#su-import').onclick=()=>$('#su-file').click();
+  $('#su-file').onchange=e=>importFile(e.target.files[0]);
+  $('#su-go').onclick=()=>{
+    const ps=$('#su-ps').value, len=clampInt($('#su-len').value,15,60,NaN), err=$('#su-err');
+    if(!ps){ err.textContent='Enter the date your last period started.'; return; }
+    if(ps>t){ err.textContent='That date is in the future.'; return; }
+    if(!isFinite(len)){ err.textContent='Cycle length should be between 15 and 60 days.'; return; }
+    const g = readGoal('su', ui.setupDir, ui.setupUnit); if(g.error){ err.textContent=g.error; return; }
+    S = defaults(); S.settings.unit=ui.setupUnit; S.settings.baseCycleLen=len;
+    S.entries[ps] = { w:null, ps:true, pe:false };
+    S.phases = [{ id:uid(), name:g.name, start:t, target:g.target }];
+    save(); renderAll(); toast('All set. Log today’s weight.');
+  };
+}
+
+function goalFields(pfx, u){
+  return `
+    <label class="f">Direction</label>
+    <div class="seg" id="${pfx}-dir"><button data-d="lose">Lose</button><button data-d="maint">Maintain</button><button data-d="gain">Gain</button></div>
+    <div class="grid2" style="margin-top:10px">
+      <div><label class="f" for="${pfx}-amt">Rate (<span class="${pfx}-unit-l">${u||'lb'}</span> per week)</label><input type="text" id="${pfx}-amt" inputmode="decimal" placeholder="0.5"></div>
+      <div><label class="f" for="${pfx}-name">Phase name</label><input type="text" id="${pfx}-name" maxlength="40" placeholder="Maintain"></div>
+    </div>
+    <div class="chips" id="${pfx}-chips"></div>`;
+}
+function wireGoalFields(pfx, dir, setDir, presetAmt){
+  const seg=$('#'+pfx+'-dir'), amt=$('#'+pfx+'-amt'), name=$('#'+pfx+'-name'), chips=$('#'+pfx+'-chips');
+  const names={lose:'Cut',maint:'Maintain',gain:'Gain'};
+  const apply=d=>{ setDir(d); $$('button',seg).forEach(b=>b.classList.toggle('on',b.dataset.d===d)); amt.disabled = d==='maint'; amt.style.opacity = d==='maint'?.5:1; if(d==='maint') amt.value=''; name.placeholder=names[d];
+    const opts = d==='lose' ? [0.25,0.5,0.75,1] : d==='gain' ? [0.25,0.5] : [];
+    chips.innerHTML = opts.map(v=>`<button class="chip" data-v="${v}">${d==='lose'?'−':'+'}${v}/wk</button>`).join('');
+    $$('button',chips).forEach(b=>b.onclick=()=>{ amt.value=b.dataset.v; });
+  };
+  $$('button',seg).forEach(b=>b.onclick=()=>apply(b.dataset.d));
+  apply(dir);
+  if(presetAmt!=null && dir!=='maint') amt.value = presetAmt;
+}
+function readGoal(pfx, dir, u){
+  const amtT=$('#'+pfx+'-amt').value, name=($('#'+pfx+'-name').value.trim()) || ({lose:'Cut',maint:'Maintain',gain:'Gain'})[dir];
+  let target=0;
+  if(dir!=='maint'){
+    const a=parseNum(amtT);
+    if(!isFinite(a) || a<=0) return { error:'Enter a rate per week, for example 0.5.' };
+    let lb = (u||unit())==='kg' ? a*LB_PER_KG : a;
+    if(lb>3) return { error:'That rate is more than 3 lb per week. Check the number.' };
+    target = dir==='lose' ? -lb : lb;
+  }
+  return { name, target };
+}
+
+/* ============================================================
+   Main screen
+   ============================================================ */
+function renderAll(){
+  if(!S){ renderSetup(); return; }
+  M = computeModel();
+  const t=todayStr();
+  $('#app').innerHTML = `
+  <div class="row" style="justify-content:space-between;align-items:flex-end">
+    <div><h1>Cycle Weight</h1><div class="sub" id="hdr"></div></div>
+    ${DEMO?'<span class="badge">Demo data</span>':''}
+  </div>
+  <div id="banners"></div>
+
+  <div class="card" id="headline"></div>
+
+  <div class="card noprint" id="entry">
+    <div class="row" style="justify-content:space-between"><h2 style="margin:0">Log a day</h2><span id="f-mode" class="badge hidden"></span></div>
+    <div class="grid2" style="margin-top:10px">
+      <div><label class="f" for="f-date">Date</label><input type="date" id="f-date" max="${t}" value="${t}"></div>
+      <div><label class="f" for="f-w">Weight (<span class="unit-l">${unit()}</span>)</label><input type="text" id="f-w" inputmode="decimal" autocomplete="off"></div>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <label class="pill" id="f-ps-l"><input type="checkbox" id="f-ps"> Period started</label>
+      <label class="pill" id="f-pe-l"><input type="checkbox" id="f-pe"> Period ended</label>
+    </div>
+    <div style="margin-top:14px">
+      <div class="row" style="justify-content:space-between;gap:4px"><span style="font-size:12.5px;color:var(--ink2)">Food <span class="muted">(carries forward to the next day)</span></span><span id="f-mnote" class="small muted"></span></div>
+      <div class="grid4" style="margin-top:6px">
+        <div><label class="f" for="f-kcal">Calories</label><input type="text" id="f-kcal" inputmode="numeric" autocomplete="off"></div>
+        <div><label class="f" for="f-p">Protein g</label><input type="text" id="f-p" inputmode="numeric" autocomplete="off"></div>
+        <div><label class="f" for="f-c">Carbs g</label><input type="text" id="f-c" inputmode="numeric" autocomplete="off"></div>
+        <div><label class="f" for="f-f">Fat g</label><input type="text" id="f-f" inputmode="numeric" autocomplete="off"></div>
+      </div>
+    </div>
+    <div style="margin-top:14px">
+      <label class="f" for="f-cm">Cheat meal</label>
+      <select id="f-cm"></select>
+      <div id="f-cm-when" class="hidden" style="margin-top:8px">
+        <div class="row" style="gap:8px">
+          <div class="seg" id="f-cm-day"><button data-v="1">Yesterday</button><button data-v="0">Today</button></div>
+          <div class="seg" id="f-cm-slot"><button data-v="b">Breakfast</button><button data-v="l">Lunch</button><button data-v="d">Dinner</button></div>
+        </div>
+      </div>
+      <div id="f-cm-list" class="small" style="margin-top:6px"></div>
+    </div>
+    <div style="margin-top:10px"><button class="link" id="f-np-t">+ Start a new phase on this day</button><span id="f-phnote" class="small muted"></span></div>
+    <div id="f-np" class="hidden" style="margin-top:6px;padding:12px;border:1px dashed var(--line2);border-radius:12px">
+      ${goalFields('fp', unit())}
+      <div class="small muted" style="margin-top:8px">The target line starts from your cycle-adjusted weight over the 7 days before this date.</div>
+    </div>
+    <div class="err" id="f-err"></div>
+    <div class="row" style="margin-top:10px">
+      <button class="btn grow" id="f-save">Save</button>
+      <button class="btn danger hidden" id="f-del">Delete</button>
+    </div>
+  </div>
+
+  <div class="card" id="chartcard">
+    <div class="row" style="justify-content:space-between">
+      <h2 style="margin:0">Trend</h2>
+      <div class="seg noprint" id="rng"><button data-r="phase">This phase</button><button data-r="3m">3 months</button><button data-r="all">All</button></div>
+    </div>
+    <div class="readout" id="readout"></div>
+    <div class="chartbox" id="chart"></div>
+    <div class="legend" id="legend"></div>
+  </div>
+
+  <div class="card" id="pattern"></div>
+  <div class="card" id="mealscard"></div>
+  <div class="card" id="phases"></div>
+  <div class="card" id="history"></div>
+  <div class="card noprint" id="settings"></div>
+  <div class="small muted" style="text-align:center;margin:16px 0 4px">Your data is stored only on this device. Back it up now and then.</div>
+  `;
+  renderHeader(); renderBanners(); renderHeadline(); wireForm(); renderChart(); renderPattern(); renderMeals(); renderPhases(); renderHistory(); renderSettings();
+  $$('#rng button').forEach(b=>{ b.classList.toggle('on', b.dataset.r===ui.range); b.onclick=()=>{ ui.range=b.dataset.r; $$('#rng button').forEach(x=>x.classList.toggle('on',x===b)); renderChart(); }; });
+}
+
+function renderHeader(){
+  const parts=[];
+  if(M.cur){
+    const c=M.cur;
+    if(c.lateBy>0) parts.push(`Cycle day ${c.day} · period ${plural(c.lateBy,'day')} later than expected`);
+    else parts.push(`Cycle day ${c.day} of ~${M.typ} · next period ~${fmtD(c.predicted)}`);
+  }
+  const p=M.ph[M.curPhase];
+  if(p) parts.push(`${esc(p.name)} (${fmtRate(p.target)} ${unit()}/wk)`);
+  $('#hdr').innerHTML = parts.join(' · ');
+}
+
+function storageBanner(){ return `<div class="banner warn"><span>⚠️</span><span class="grow">This browser isn’t letting the app save data (private browsing or storage blocked). Anything you enter will be lost when you close it.</span></div>`; }
+function iosTip(){
+  const ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
+  if(!ios || navigator.standalone || DEMO || location.protocol==='file:') return '';
+  return `<div class="banner"><span>📲</span><span class="grow"><b>Add this to your Home Screen first:</b> tap Share → Add to Home Screen, then open it from the icon. The Home Screen app keeps its own data, separate from Safari.</span></div>`;
+}
+function renderBanners(){
+  const out=[];
+  if(!storageOK) out.push(storageBanner());
+  const tip=iosTip(); if(tip) out.push(tip);
+  if(M.cycleActive && M.cur && M.cur.paused) out.push(`<div class="banner"><span>⏸️</span><span class="grow">Your period is ${plural(M.cur.lateBy,'day')} later than expected, so cycle adjustment is paused for new days. It switches back on when you log a period start.</span></div>`);
+  const nEntries = Object.keys(S.entries).length;
+  if(!DEMO && nEntries>=5){
+    const lb=S.settings.lastBackup; const ago = lb ? M.todayN-dnum(lb) : null;
+    if(ago==null || ago>=7) out.push(`<div class="banner warn"><span>💾</span><span class="grow">Last backup: <b>${ago==null?'never':plural(ago,'day')+' ago'}</b>. Your data lives only on this phone.</span><button class="btn small" id="bn-backup">Back up now</button></div>`);
+  }
+  $('#banners').innerHTML = out.join('');
+  const b=$('#bn-backup'); if(b) b.onclick=backup;
+}
+
+function statusPill(kind, label){
+  const map = { good:['var(--good)','✓'], warn:['var(--warn)','!'], info:['var(--main)','i'] };
+  const [col,ic] = map[kind];
+  return `<span class="status"><span class="dot" style="background:${col}">${ic}</span>${esc(label)}</span>`;
+}
+function renderHeadline(){
+  const el=$('#headline'); const j=M.curPhase; const p=M.ph[j];
+  if(!p){ el.innerHTML='<div class="muted">No phase yet.</div>'; return; }
+  const u=unit();
+  const lastDay = M.days.length ? M.days[M.days.length-1] : null;
+  if(!M.cycleActive){
+    const need = MIN_CYCLES - M.cyclesWithData;
+    el.innerHTML = `
+      <div class="row" style="justify-content:space-between"><h2 style="margin:0">${esc(p.name)} <span class="muted" style="font-weight:500">· target ${fmtRate(p.target)} ${u}/wk</span></h2></div>
+      <div style="margin-top:6px">${statusPill('info', `Learning your cycle (${M.cyclesWithData} of ${MIN_CYCLES})`)}</div>
+      <div class="headline" style="margin-top:12px">
+        <div class="stat"><div class="k">7-day average</div><div class="v">${lastDay?fmtW(lastDay.avg7):'—'} <small>${u}</small></div></div>
+        <div class="stat"><div class="k">Target line today</div><div class="v">${fmtW(M.targetAt(j,M.todayN))} <small>${u}</small></div></div>
+      </div>
+      <div class="small muted" style="margin-top:10px">The cycle-adjusted trend appears after ${plural(MIN_CYCLES,'full cycle')} of weigh-ins (${need} to go). Until then the chart shows your raw weight and a 7-day average. Log your period start and end dates as they happen.</div>`;
+    return;
+  }
+  const tToday = M.trendAt(j, M.todayN), gToday = M.targetAt(j, M.todayN);
+  if(p.slope==null || p.nW<SETTLE_DAYS){
+    el.innerHTML = `
+      <h2 style="margin:0">${esc(p.name)} <span class="muted" style="font-weight:500">· target ${fmtRate(p.target)} ${u}/wk</span></h2>
+      <div style="margin-top:6px">${statusPill('info', `Settling in: ${p.nW} of ${SETTLE_DAYS} weigh-ins`)}</div>
+      <div class="headline" style="margin-top:12px">
+        <div class="stat"><div class="k">Started from (cycle-adjusted)</div><div class="v">${fmtW(p.anchor)} <small>${u}</small></div></div>
+        <div class="stat"><div class="k">Target line today</div><div class="v">${fmtW(gToday)} <small>${u}</small></div></div>
+      </div>
+      <div class="small muted" style="margin-top:10px">A new phase needs about ${SETTLE_DAYS} weigh-ins before its trend line is reliable. Until then the line is drawn lighter. Expect a jump if this phase raised carbs or water.</div>`;
+    return;
+  }
+  const rate=p.slope*7, se=p.seSlope!=null ? p.seSlope*7 : Infinity;
+  const lo=rate-1.28*se, hi=rate+1.28*se, diff=rate-p.target;
+  let kind='good', label='On track';
+  if(!((p.target>=lo && p.target<=hi) || Math.abs(diff)<=ON_TRACK_TOL)){
+    kind='warn';
+    if(p.target===0) label = diff>0 ? 'Drifting up' : 'Drifting down';
+    else label = (diff*Math.sign(p.target)>0) ? 'Faster than target' : 'Slower than target';
+  }
+  const gap = (tToday!=null && gToday!=null) ? tToday-gToday : null;
+  el.innerHTML = `
+    <h2 style="margin:0">${esc(p.name)} <span class="muted" style="font-weight:500">· since ${fmtD(p.sn)}</span></h2>
+    <div style="margin-top:6px">${statusPill(kind,label)}</div>
+    <div class="headline" style="margin-top:12px">
+      <div class="stat"><div class="k">Trend rate</div><div class="v">${fmtRate(rate)} <small>${u}/wk</small></div><div class="small muted">±${isFinite(se)?toDisp(1.28*se).toFixed(2):'—'} · target ${fmtRate(p.target)}</div></div>
+      <div class="stat"><div class="k">Trend weight today</div><div class="v">${fmtW(tToday)} <small>${u}</small></div><div class="small muted">${gap==null?'':(Math.abs(toDisp(gap))<0.05?'on the target line':`${fmtW(Math.abs(gap))} ${u} ${gap>0?'above':'below'} target line`)}</div></div>
+    </div>
+    <div class="small muted" style="margin-top:10px">Cycle effects removed. “±” is an 80% range; status changes only when the target falls clearly outside it.</div>`;
+}
+
+/* ---------------- Entry form ---------------- */
+function wireForm(){
+  const date=$('#f-date'), w=$('#f-w'), ps=$('#f-ps'), pe=$('#f-pe'), np=$('#f-np'), npt=$('#f-np-t'), err=$('#f-err'), del=$('#f-del'), mode=$('#f-mode');
+  let npOpen=false;
+  const syncPills=()=>{ $('#f-ps-l').classList.toggle('on',ps.checked); $('#f-pe-l').classList.toggle('on',pe.checked); };
+  ps.onchange=pe.onchange=syncPills;
+  function loadDate(){
+    err.textContent='';
+    const d=date.value, e=d && S.entries[d];
+    w.value = e && e.w!=null ? toDisp(e.w).toFixed(1).replace(/\.0$/,'.0') : '';
+    ps.checked = !!(e && e.ps); pe.checked = !!(e && e.pe); syncPills();
+    const src = (e && e.m) ? { m:e.m, from:null } : prevMacros(d);
+    MKEYS.forEach(k=>{ const v = src && src.m[k]; $('#f-'+k).value = v!=null ? String(v) : ''; });
+    macroFrom = src && src.from ? src.from : null; macroNote();
+    cmReset(); cmList();
+    const last = M.days.length ? M.days[M.days.length-1] : null;
+    w.placeholder = last ? fmtW(last.w) : (unit()==='kg'?'65.0':'145.0');
+    mode.classList.toggle('hidden', !e); mode.textContent = e ? 'Editing '+fmtD(dnum(d),true) : '';
+    del.classList.toggle('hidden', !e);
+    $('#f-save').textContent = e ? 'Update' : 'Save';
+    const phHere = d && S.phases.find(p=>p.start===d);
+    $('#f-phnote').textContent = phHere ? `  (phase “${phHere.name}” starts this day)` : '';
+    npOpen=false; np.classList.add('hidden'); npt.textContent='+ Start a new phase on this day';
+  }
+  date.onchange=loadDate;
+  wireCheatMeal();
+  MKEYS.forEach(k=>$('#f-'+k).addEventListener('input',()=>{ macroFrom=null; macroNote(); }));
+  npt.onclick=()=>{ npOpen=!npOpen; np.classList.toggle('hidden',!npOpen); npt.textContent = npOpen ? '− Don’t start a new phase' : '+ Start a new phase on this day'; };
+  wireGoalFields('fp', ui.formDir, v=>ui.formDir=v);
+  loadDate();
+
+  $('#f-save').onclick = async ()=>{
+    err.textContent='';
+    const d=date.value; if(!d){ err.textContent='Pick a date.'; return; }
+    if(d>todayStr()){ err.textContent='That date is in the future.'; return; }
+    const wt=w.value.trim(); let lb=null;
+    if(wt!==''){
+      const v=parseNum(wt); if(!isFinite(v)){ err.textContent='Weight should be a number, like 142.4.'; return; }
+      lb=fromDisp(v); if(lb<60 || lb>500){ err.textContent='That weight looks off. Check the number and the units.'; return; }
+    }
+    const mr = readMacros(); if(mr.error){ err.textContent=mr.error; return; }
+    const m = mr.m;
+    let goal=null;
+    if(npOpen){ goal=readGoal('fp', ui.formDir); if(goal.error){ err.textContent=goal.error; return; } }
+    const old=S.entries[d];
+    if(lb==null && !ps.checked && !pe.checked && !goal && !old && !m && !cmRead()){ err.textContent='Enter a weight (or tick a period box).'; return; }
+    const n=dnum(d);
+    if(old && old.w!=null && lb!=null && Math.abs(old.w-lb)>1e-9){
+      if(!await dialog({title:'Replace weight?', body:`Replace <b>${fmtW(old.w)} ${unit()}</b> with <b>${fmtW(lb)} ${unit()}</b> for ${fmtD(n,true)}?`, ok:'Replace'})) return;
+    }
+    if(old && old.w!=null && lb==null){
+      if(!await dialog({title:'Remove weight?', body:`The weight box is empty. Remove the ${fmtW(old.w)} ${unit()} weight for ${fmtD(n,true)}?`, ok:'Remove', danger:true})) return;
+    }
+    if(ps.checked && !(old && old.ps)){
+      const near = M.starts.filter(s=>s!==n && Math.abs(s-n)<=12);
+      if(near.length && !await dialog({title:'Another period start?', body:`You already logged a period start on ${fmtD(near[0],true)} (${Math.abs(near[0]-n)} days ${near[0]<n?'earlier':'later'}). Log this one as well?`, ok:'Log it'})) return;
+    }
+    if(goal){
+      const exist=S.phases.find(p=>p.start===d);
+      if(exist){ if(!await dialog({title:'Replace phase?', body:`“${esc(exist.name)}” already starts on ${fmtD(n,true)}. Replace it with “${esc(goal.name)}”?`, ok:'Replace'})) return; S.phases=S.phases.filter(p=>p!==exist); }
+      S.phases.push({ id:uid(), name:goal.name, start:d, target:goal.target }); S.phases.sort((a,b)=>a.start<b.start?-1:1);
+    }
+    const e={ w:lb, ps:ps.checked, pe:pe.checked };
+    if(m) e.m=m;
+    if(old && old.cm) e.cm=old.cm;
+    const cmNew = cmRead();
+    if(cmNew === 'invalid'){ err.textContent='Pick a cheat-meal type, or choose None.'; return; }
+    if(e.w==null && !e.ps && !e.pe && !e.m && !e.cm && !cmNew) delete S.entries[d]; else S.entries[d]=e;
+    if(cmNew){
+      const md = dstr(n - cmNew.dayOffset);
+      const me = S.entries[md] || (S.entries[md] = { w:null, ps:false, pe:false });
+      me.cm = (me.cm||[]).filter(x=>x.s!==cmNew.s).concat([{ t:cmNew.t, s:cmNew.s }]);
+    }
+    save(); renderAll(); toast('Saved '+fmtD(n,true));
+  };
+  del.onclick = async ()=>{
+    const d=date.value, e=S.entries[d]; if(!e) return;
+    if(!await dialog({title:'Delete this day?', body:`Delete everything logged for ${fmtD(dnum(d),true)}${e.w!=null?` (${fmtW(e.w)} ${unit()})`:''}? Phases are kept.`, ok:'Delete', danger:true})) return;
+    delete S.entries[d]; save(); renderAll(); toast('Deleted');
+  };
+}
+/* ---------------- Cheat meals (form) ---------------- */
+const cmState = { day:1, slot:'d' };
+const mealName = id => id==='generic' ? 'Generic' : ((S.mealTypes||[]).find(t=>t.id===id)||{}).name || 'Unknown';
+function cmOptions(sel){
+  const el=$('#f-cm'); if(!el) return;
+  el.innerHTML = `<option value="">None</option><option value="generic">Generic cheat meal</option>` +
+    (S.mealTypes||[]).map(t=>`<option value="${esc(t.id)}">${esc(t.name)}</option>`).join('') +
+    `<option value="__new">+ New type…</option>`;
+  el.value = sel || '';
+}
+function cmReset(){ cmState.day=1; cmState.slot='d'; cmOptions(''); cmSync(); }
+function cmSync(){
+  const v=$('#f-cm').value; $('#f-cm-when').classList.toggle('hidden', !v || v==='__new');
+  $$('#f-cm-day button').forEach(b=>b.classList.toggle('on', Number(b.dataset.v)===cmState.day));
+  $$('#f-cm-slot button').forEach(b=>b.classList.toggle('on', b.dataset.v===cmState.slot));
+}
+function cmRead(){ const v=$('#f-cm') && $('#f-cm').value; if(!v) return null; if(v==='__new') return 'invalid'; return { t:v, s:cmState.slot, dayOffset:cmState.day }; }
+function cmList(){
+  const el=$('#f-cm-list'); if(!el) return; const d=$('#f-date').value; if(!d){ el.innerHTML=''; return; }
+  const n=dnum(d), rows=[];
+  [n-1, n].forEach(k=>{ const e=S.entries[dstr(k)]; if(e && e.cm) e.cm.forEach(m=>rows.push({k, m})); });
+  el.innerHTML = rows.map(({k,m})=>`<span class="badge" style="margin:0 6px 6px 0">🍽 ${esc(mealName(m.t))} · ${fmtD(k,true)} ${SLOT_NAME[m.s]} <button class="link" style="padding:0 0 0 4px" data-rm="${dstr(k)}|${m.s}" aria-label="Remove">✕</button></span>`).join('');
+  $$('[data-rm]',el).forEach(b=>b.onclick=async()=>{
+    const [dd,sl]=b.dataset.rm.split('|'); const e=S.entries[dd]; if(!e||!e.cm) return;
+    const m=e.cm.find(x=>x.s===sl);
+    if(!await dialog({title:'Remove cheat meal?', body:`Remove ${esc(mealName(m.t))} (${fmtD(dnum(dd),true)} ${SLOT_NAME[sl]})?`, ok:'Remove', danger:true})) return;
+    e.cm=e.cm.filter(x=>x.s!==sl); if(!e.cm.length) delete e.cm;
+    if(e.w==null && !e.ps && !e.pe && !e.m && !e.cm) delete S.entries[dd];
+    const keep=$('#f-date').value; save(); renderAll(); const de=$('#f-date'); de.value=keep; de.onchange(); toast('Removed');
+  });
+}
+function wireCheatMeal(){
+  cmOptions('');
+  $('#f-cm').onchange=async e=>{
+    if(e.target.value==='__new'){
+      const name = await promptDialog({ title:'New cheat-meal type', label:'Name (e.g. Sushi, Nando’s, Pizza)' });
+      if(name){
+        const ex=(S.mealTypes||[]).find(t=>t.name.toLowerCase()===name.toLowerCase());
+        const id = ex ? ex.id : 't'+uid();
+        if(!ex){ S.mealTypes=(S.mealTypes||[]).concat([{ id, name:name.slice(0,30) }]); save(); }
+        cmOptions(id);
+      } else cmOptions('');
+    }
+    cmSync();
+  };
+  $$('#f-cm-day button').forEach(b=>b.onclick=()=>{ cmState.day=Number(b.dataset.v); cmSync(); });
+  $$('#f-cm-slot button').forEach(b=>b.onclick=()=>{ cmState.slot=b.dataset.v; cmSync(); });
+}
+function promptDialog({title, label, ok='Add'}){
+  return new Promise(res=>{
+    const o=document.createElement('div'); o.className='overlay';
+    o.innerHTML=`<div class="dialog" role="dialog" aria-modal="true"><h3>${esc(title)}</h3><label class="f" for="pd-in">${esc(label)}</label><input type="text" id="pd-in" maxlength="30" autocomplete="off"><div class="row" style="margin-top:14px"><button class="btn ghost" data-a="0">Cancel</button><button class="btn" data-a="1">${esc(ok)}</button></div></div>`;
+    const done=v=>{ o.remove(); res(v); };
+    o.addEventListener('click', e=>{ const a=e.target.closest('[data-a]'); if(a) done(a.dataset.a==='1' ? ($('#pd-in',o).value.trim()||null) : null); else if(e.target===o) done(null); });
+    $('#pd-in',o).addEventListener('keydown', e=>{ if(e.key==='Enter') done($('#pd-in',o).value.trim()||null); });
+    document.body.appendChild(o); $('#pd-in',o).focus();
+  });
+}
+
+const MKEYS = ['kcal','p','c','f'];
+let macroFrom = null;
+function prevMacros(d){
+  const keys = Object.keys(S.entries).filter(k=>k<d && S.entries[k].m).sort();
+  if(!keys.length) return null; const k=keys[keys.length-1];
+  return { m:S.entries[k].m, from:k };
+}
+function readMacros(){
+  const m={}; let any=false;
+  const lim={kcal:[0,10000,'Calories'],p:[0,1000,'Protein'],c:[0,1500,'Carbs'],f:[0,1000,'Fat']};
+  for(const k of MKEYS){
+    const t=$('#f-'+k).value.trim(); if(t===''){ m[k]=null; continue; }
+    const v=parseNum(t); const [lo,hi,name]=lim[k];
+    if(!isFinite(v) || v<lo || v>hi) return { error:`${name} should be a number from ${lo} to ${hi}.` };
+    m[k]=Math.round(v*10)/10; any=true;
+  }
+  return { m: any ? m : null };
+}
+function macroNote(){
+  const el=$('#f-mnote'); if(!el) return;
+  const g=k=>parseNum($('#f-'+k).value);
+  const p=g('p'), c=g('c'), f=g('f');
+  const parts=[];
+  if(macroFrom) parts.push('from '+fmtD(dnum(macroFrom),true));
+  if(isFinite(p) && isFinite(c) && isFinite(f)) parts.push('macros ≈ '+Math.round(4*p+4*c+9*f).toLocaleString()+' kcal');
+  el.textContent=parts.join(' · ');
+}
+function editDay(d){ const el=$('#f-date'); el.value=d; el.onchange(); $('#entry').scrollIntoView({behavior:'smooth', block:'start'}); setTimeout(()=>$('#f-w').focus({preventScroll:true}),350); }
+
+/* ---------------- Chart ---------------- */
+const SVGNS='http://www.w3.org/2000/svg';
+function niceStep(span, count){ const raw=span/Math.max(1,count); const mag=Math.pow(10,Math.floor(Math.log10(raw))); const e=raw/mag; return (e<=1?1:e<=2?2:e<=2.5?2.5:e<=5?5:10)*mag; }
+function renderChart(){
+  const box=$('#chart'); if(!box) return;
+  const W=Math.max(280, Math.floor(box.clientWidth||600)), H = W<520 ? 270 : 330;
+  const m={l:40,r:10,t:16,b:26}, pw=W-m.l-m.r, phh=H-m.t-m.b;
+  const T=M.todayN, cp=M.ph[M.curPhase];
+  let x0, x1=T+7;
+  if(ui.range==='phase'){ x0 = Math.min((cp?cp.sn:T)-10, T-28); }
+  else if(ui.range==='3m'){ x0 = T-91; }
+  else { x0 = Math.min(M.firstN, T-28)-2; }
+  const inR = n => n>=x0 && n<=x1;
+  // series (lb)
+  const vis = M.days.filter(x=>inR(x.n));
+  const ys=[];
+  vis.forEach(x=>ys.push(x.w));
+  const segs=[]; // fitted + target segments per phase
+  M.ph.forEach((p,j)=>{
+    const end = j+1<M.ph.length ? M.ph[j+1].sn : T+14;
+    const a=Math.max(p.sn,x0), b=Math.min(end,x1);
+    const tgt = (p.anchor!=null && b>a) ? {a,b,ya:M.targetAt(j,a),yb:M.targetAt(j,b)} : null;
+    let fit=null;
+    if(M.cycleActive && p.slope!=null && p.level!=null){
+      const fa=Math.max(Math.min(p.firstN,p.sn),x0), fb=Math.min(j===M.curPhase?T:p.lastN, x1);
+      if(fb>fa) fit={a:fa,b:fb,ya:M.trendAt(j,fa),yb:M.trendAt(j,fb), settling:p.nW<SETTLE_DAYS};
+    }
+    if(tgt){ ys.push(tgt.ya,tgt.yb); } if(fit){ ys.push(fit.ya,fit.yb); }
+    segs.push({p,j,tgt,fit});
+  });
+  if(!ys.length){ const last=M.days[M.days.length-1]; ys.push(last?last.w:145); }
+  let ymin=Math.min(...ys), ymax=Math.max(...ys);
+  const padY=Math.max(0.6,(ymax-ymin)*0.08); ymin-=padY; ymax+=padY;
+  if(ymax-ymin<3){ const c=(ymax+ymin)/2; ymin=c-1.5; ymax=c+1.5; }
+  const dmin=toDisp(ymin), dmax=toDisp(ymax);
+  const X = n => m.l + (n-x0)/(x1-x0)*pw;
+  const Y = lb => m.t + (dmax-toDisp(lb))/(dmax-dmin)*phh;
+  const parts=[];
+  parts.push(`<defs><pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" fill="var(--prov)"/><line x1="0" y1="0" x2="0" y2="6" stroke="var(--prov-line)" stroke-width="1"/></pattern><clipPath id="plot"><rect x="${m.l}" y="${m.t-4}" width="${pw}" height="${phh+8}"/></clipPath></defs>`);
+  // y grid
+  const step=niceStep(dmax-dmin,5);
+  for(let v=Math.ceil(dmin/step)*step; v<=dmax+1e-9; v+=step){
+    const yy=m.t+(dmax-v)/(dmax-dmin)*phh;
+    parts.push(`<line x1="${m.l}" x2="${W-m.r}" y1="${yy}" y2="${yy}" stroke="var(--line)" stroke-width="1"/><text x="${m.l-6}" y="${yy+4}" text-anchor="end" font-size="11" fill="var(--muted)">${(+v.toFixed(1)).toString()}</text>`);
+  }
+  // x ticks
+  const maxT=Math.max(2,Math.floor(pw/62)), span=x1-x0; const ticks=[];
+  if(span/7<=maxT){ for(let n=x0;n<=x1;n++) if(new Date(n*DAY).getUTCDay()===1) ticks.push([n,fmtD(n).replace(/ \d{4}$/,'')]); }
+  else if(span/14<=maxT){ let first=null; for(let n=x0;n<=x1;n++) if(new Date(n*DAY).getUTCDay()===1){ if(first==null) first=n; if((n-first)%14===0) ticks.push([n,fmtD(n).replace(/ \d{4}$/,'')]); } }
+  else { const months=[]; let d=new Date(x0*DAY); d=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,1)); while(d.getTime()/DAY<=x1){ months.push(Math.round(d.getTime()/DAY)); d=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,1)); }
+    const every=Math.ceil(months.length/maxT); months.forEach((n,i)=>{ if(i%every===0){ const dd=new Date(n*DAY); ticks.push([n, MON[dd.getUTCMonth()]+(dd.getUTCMonth()===0?" ’"+String(dd.getUTCFullYear()).slice(2):'')]); } }); }
+  ticks.forEach(([n,l])=>parts.push(`<line x1="${X(n)}" x2="${X(n)}" y1="${H-m.b}" y2="${H-m.b+4}" stroke="var(--line2)"/><text x="${X(n)}" y="${H-m.b+16}" text-anchor="middle" font-size="11" fill="var(--muted)">${l}</text>`));
+  parts.push(`<g clip-path="url(#plot)">`);
+  // period bands
+  M.starts.forEach(s=>{
+    let e=s+4; for(let n=s;n<=s+12;n++){ const en=S.entries[dstr(n)]; if(en && en.pe){ e=n; break; } }
+    if(e<x0 || s>x1) return;
+    parts.push(`<rect x="${X(s-0.5)}" y="${m.t}" width="${Math.max(1,X(e+0.5)-X(s-0.5))}" height="${phh}" fill="var(--period-band)"/>`);
+  });
+  // phase dividers
+  segs.forEach(({p,j})=>{
+    if(p.sn<x0 || p.sn>x1) return;
+    if(j>0) parts.push(`<line x1="${X(p.sn-0.5)}" x2="${X(p.sn-0.5)}" y1="${m.t}" y2="${H-m.b}" stroke="var(--ink2)" stroke-width="1" stroke-dasharray="2 3" opacity=".6"/>`);
+  });
+  // target lines
+  segs.forEach(({tgt})=>{ if(tgt) parts.push(`<line x1="${X(tgt.a)}" y1="${Y(tgt.ya)}" x2="${X(tgt.b)}" y2="${Y(tgt.yb)}" stroke="var(--target)" stroke-width="2" stroke-dasharray="6 5" stroke-linecap="round"/>`); });
+  // daily weigh-ins: faint dots (the noise), never a zigzag line
+  vis.forEach(x=>parts.push(`<circle cx="${X(x.n).toFixed(1)}" cy="${Y(x.w).toFixed(1)}" r="${W<520?2.4:2.8}" fill="var(--raw)" opacity=".55"/>`));
+  if(M.cycleActive){
+    // the wave: trend + learned cycle effect, i.e. what the scale "should" read each day
+    segs.forEach(({fit,j})=>{
+      if(!fit) return; let d='';
+      for(let n=Math.ceil(fit.a); n<=fit.b; n++){
+        const ci=M.cycleInfo(n), e=((ci && !ci.paused) ? M.curve(ci.c) : 0) + M.mealEffN(n);
+        d += (d?'L':'M') + X(n).toFixed(1)+','+Y(M.trendAt(j,n)+e).toFixed(1);
+      }
+      if(d) parts.push(`<path d="${d}" fill="none" stroke="var(--wave)" stroke-width="1.75" stroke-linejoin="round" stroke-linecap="round" opacity="${fit.settling?.4:.85}"/>`);
+    });
+    segs.forEach(({fit,j})=>{
+      if(!fit) return;
+      const pts=[fit.a]; for(let n=Math.ceil(fit.a); n<fit.b; n++) if(n>fit.a && n<=M.ph[j].sn+RAMP_DAYS) pts.push(n); pts.push(fit.b);
+      const d=pts.map((n,i)=>(i?'L':'M')+X(n).toFixed(1)+','+Y(M.trendAt(j,n)).toFixed(1)).join('');
+      parts.push(`<path d="${d}" fill="none" stroke="var(--card)" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" opacity=".9"/><path d="${d}" fill="none" stroke="var(--main)" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" opacity="${fit.settling?.4:1}"/>`);
+    });
+  } else {
+    let ap='', pv=null; M.days.forEach(x=>{ if(x.n<x0-7||x.n>x1) return; ap += (pv!=null && x.n-pv<=7?'L':'M')+X(x.n).toFixed(1)+','+Y(x.avg7).toFixed(1); pv=x.n; });
+    if(ap) parts.push(`<path d="${ap}" fill="none" stroke="var(--main)" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>`);
+  }
+  // phase labels
+  segs.forEach(({p,j})=>{ const lx=Math.max(X(p.sn-0.5),m.l); if(p.sn>x1) return; const nx = j+1<M.ph.length ? X(M.ph[j+1].sn) : W; if(nx-lx<40) return;
+    parts.push(`<text x="${lx+4}" y="${H-m.b-6}" font-size="11" font-weight="600" fill="var(--ink2)">${esc(p.name)}</text>`); });
+  // cheat-meal markers (small ticks at the top)
+  M.meals.forEach(ml=>{ if(ml.n<x0 || ml.n>x1) return; const cx=X(ml.n + (SLOT_HOUR[ml.s]-12)/24);
+    parts.push(`<path d="M${(cx-4.5).toFixed(1)},${m.t} L${(cx+4.5).toFixed(1)},${m.t} L${cx.toFixed(1)},${m.t+7} Z" fill="var(--ink2)" opacity=".75"/>`); });
+  // hover marks
+  parts.push(`<g id="hov" class="hidden"><line id="hov-l" y1="${m.t}" y2="${H-m.b}" stroke="var(--ink2)" stroke-width="1"/><circle id="hov-c" r="4.5" fill="var(--raw)" stroke="var(--card)" stroke-width="2"/><circle id="hov-a" r="4.5" fill="var(--main)" stroke="var(--card)" stroke-width="2"/></g>`);
+  parts.push(`</g>`);
+  parts.push(`<rect id="hit" x="${m.l}" y="0" width="${pw}" height="${H}" fill="transparent"/>`);
+  box.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="Weight trend chart">${parts.join('')}</svg>`;
+
+  // legend
+  const lg=[];
+  if(M.cycleActive){ lg.push(`<span><span class="sw" style="border-color:var(--main);border-top-width:3.5px"></span>Trend (cycle${M.mealsSeen.length?' & meal spikes':''} removed)</span>`); lg.push(`<span><span class="sw" style="border-color:var(--wave)"></span>Scale weight, smoothed</span>`); }
+  else lg.push(`<span><span class="sw" style="border-color:var(--main);border-top-width:3px"></span>7-day average</span>`);
+  lg.push(`<span><span class="sw" style="border-color:var(--target);border-top-style:dashed"></span>Target</span>`);
+  lg.push(`<span><svg width="10" height="10"><circle cx="5" cy="5" r="3" fill="var(--raw)" opacity=".7"/></svg>Scale weight (daily)</span>`);
+  if(M.meals.length) lg.push(`<span><svg width="10" height="8"><path d="M1,0 L9,0 L5,7 Z" fill="var(--ink2)" opacity=".75"/></svg>Cheat meal</span>`);
+  lg.push(`<span><span style="display:inline-block;width:14px;height:10px;background:var(--period-band);border-radius:2px"></span>Period</span>`);
+  $('#legend').innerHTML=lg.join('') + `<div class="small muted" style="flex-basis:100%;margin-top:2px">“Cycle” and “cheat meal” are how much each is pushing that day’s scale weight up (+) or down (−); “adjusted” takes them out.</div>`;
+
+  // hover / touch readout
+  const svg=$('svg',box), hit=$('#hit',svg), hov=$('#hov',svg);
+  const byN=new Map(vis.map(x=>[x.n,x]));
+  function show(x){
+    if(!x){ hov.classList.add('hidden'); setReadout(vis[vis.length-1], true); return; }
+    hov.classList.remove('hidden');
+    $('#hov-l',svg).setAttribute('x1',X(x.n)); $('#hov-l',svg).setAttribute('x2',X(x.n));
+    $('#hov-c',svg).setAttribute('cx',X(x.n)); $('#hov-c',svg).setAttribute('cy',Y(x.w));
+    const a=$('#hov-a',svg), tv=M.cycleActive ? M.trendAt(x.p,x.n) : x.avg7;
+    if(tv!=null){ a.setAttribute('cx',X(x.n)); a.setAttribute('cy',Y(tv)); a.style.display=''; } else a.style.display='none';
+    setReadout(x,false);
+  }
+  function pick(ev){
+    const r=svg.getBoundingClientRect(); const px=(ev.clientX-r.left)*(W/r.width);
+    const n=Math.round(x0+(px-m.l)/pw*(x1-x0)); let best=null;
+    for(let d=0; d<=4 && !best; d++){ best=byN.get(n-d)||byN.get(n+d)||null; }
+    show(best);
+  }
+  hit.addEventListener('pointermove',pick); hit.addEventListener('pointerdown',pick);
+  hit.addEventListener('pointerleave',()=>show(null));
+  show(null);
+}
+function setReadout(x, isLatest){
+  const el=$('#readout'); if(!el) return;
+  if(!x){ el.innerHTML='<span class="muted">No weigh-ins in this range yet.</span>'; return; }
+  const u=unit(), sg=v=>(v>=0?'+':'−')+fmtW(Math.abs(v));
+  const head=`<b>${fmtD(x.n,true)}</b>${isLatest?' (latest)':''}`;
+  const ctx=[];
+  if(x.cyc) ctx.push(`cycle day ${x.cyc.k+1}`);
+  const p=M.ph[x.p]; if(p) ctx.push(esc(p.name));
+  // the arithmetic, spelled out: scale − cycle effect − meal effect = adjusted
+  const showC = M.cycleActive && x.cyc && !x.cyc.paused && Math.abs(x.effC||0)>=0.05;
+  const showM = Math.abs(x.effM||0)>=0.05;
+  const math=[`Scale <b>${fmtW(x.w)}</b> ${u}`];
+  if(showC) math.push(`cycle ${sg(x.effC)}`);
+  if(showM) math.push(`cheat meal ${sg(x.effM)}`);
+  el.innerHTML = `${head} · ${ctx.join(' · ')}<br>${math.join(' · ')}${(showC||showM) ? ` → adjusted <b>${fmtW(x.adj)}</b> ${u}` : ''}`;
+}
+
+/* ---------------- Cycle pattern ---------------- */
+function renderPattern(){
+  const el=$('#pattern'); const u=unit();
+  if(!M.cycleActive){
+    el.innerHTML=`<h2>Your cycle pattern</h2><div class="small muted">Once there are ${plural(MIN_CYCLES,'full cycle')} of weigh-ins, this shows how much your weight typically rises and falls across your cycle. So far: ${M.cyclesWithData} of ${MIN_CYCLES}. Typical cycle: ${M.typ} days (${M.lenSource}).</div>`;
+    return;
+  }
+  const C=M.Cref;
+  // detrended points: weight minus the phase line
+  const pts=M.days.filter(x=>x.cyc && !x.cyc.paused).map(x=>({c:x.cyc.c, v:x.w-M.trendAt(x.p,x.n)-(x.effM||0)})).filter(o=>isFinite(o.v));
+  const curveP=[]; let cmax=-Infinity, cmin=Infinity, cmaxAt=0, cminAt=0;
+  for(let i=0;i<=200;i++){ const c=i/200*C, v=M.curve(c); curveP.push([c,v]); if(v>cmax){cmax=v;cmaxAt=c;} if(v<cmin){cmin=v;cminAt=c;} }
+  const vals=pts.map(o=>o.v).concat([cmax,cmin]);
+  let lo=Math.max(-5,Math.min(...vals)), hi=Math.min(5,Math.max(...vals)); const pd=Math.max(0.3,(hi-lo)*0.08); lo-=pd; hi+=pd;
+  el.innerHTML=`<h2>Your cycle pattern</h2>
+    <div class="small" style="color:var(--ink2);margin-bottom:6px">Typically <b>${fmtW(cmax)} ${u} above</b> trend around cycle day ${Math.round(cmaxAt)+1} and <b>${fmtW(-cmin)} ${u} below</b> around day ${Math.round(cminAt)+1}. This is what gets removed.</div>
+    <div class="chartbox" id="patchart"></div>
+    <div class="legend"><span><span class="sw" style="border-color:var(--main);border-top-width:3px"></span>Typical effect</span><span><svg width="10" height="10"><circle cx="5" cy="5" r="3" fill="var(--raw)" opacity=".6"/></svg>Your days (minus trend)</span><span><span style="display:inline-block;width:14px;height:10px;background:var(--period-band);border-radius:2px"></span>First week</span><span><span style="display:inline-block;width:14px;height:10px;background:var(--prov);border:1px solid var(--prov-line);border-radius:2px"></span>Week before period</span></div>
+    <div class="small muted" style="margin-top:6px">Typical cycle: ${M.typ} days (${M.lenSource}). Days 1–${M.F} are lined up from the period start and the last ${M.B} days from the next start; the middle is stretched to fit.</div>`;
+  const box=$('#patchart'); const W=Math.max(280,Math.floor(box.clientWidth||600)), H=170, m={l:40,r:10,t:10,b:24}, pw=W-m.l-m.r, phh=H-m.t-m.b;
+  const X=c=>m.l+c/C*pw, Y=v=>m.t+(toDisp(hi)-toDisp(v))/(toDisp(hi)-toDisp(lo))*phh;
+  const p=[];
+  p.push(`<rect x="${X(0)}" y="${m.t}" width="${X(M.F)-X(0)}" height="${phh}" fill="var(--period-band)"/>`);
+  p.push(`<rect x="${X(C-M.B)}" y="${m.t}" width="${X(C)-X(C-M.B)}" height="${phh}" fill="var(--prov)"/>`);
+  const step=niceStep(toDisp(hi)-toDisp(lo),4);
+  for(let v=Math.ceil(toDisp(lo)/step)*step; v<=toDisp(hi)+1e-9; v+=step){ const yy=m.t+(toDisp(hi)-v)/(toDisp(hi)-toDisp(lo))*phh; p.push(`<line x1="${m.l}" x2="${W-m.r}" y1="${yy}" y2="${yy}" stroke="var(--line)" ${Math.abs(v)<1e-9?'stroke-width="1.5" stroke="var(--line2)"':''}/><text x="${m.l-6}" y="${yy+4}" text-anchor="end" font-size="11" fill="var(--muted)">${v>0?'+':''}${(+v.toFixed(1))}</text>`); }
+  pts.forEach(o=>{ if(o.v<lo||o.v>hi) return; p.push(`<circle cx="${X(o.c).toFixed(1)}" cy="${Y(o.v).toFixed(1)}" r="2.2" fill="var(--raw)" opacity=".55"/>`); });
+  p.push(`<path d="${curveP.map(([c,v],i)=>(i?'L':'M')+X(c).toFixed(1)+','+Y(v).toFixed(1)).join('')}" fill="none" stroke="var(--main)" stroke-width="3" stroke-linecap="round"/>`);
+  [[0,'Day 1'],[M.F,'Day '+(M.F+1)],[C-M.B,'−'+M.B+'d'],[C,W<520?'Next':'Next period']].forEach(([c,l],i)=>p.push(`<text x="${X(c)}" y="${H-6}" text-anchor="${i===0?'start':i===3?'end':'middle'}" font-size="11" fill="var(--muted)">${l}</text>`));
+  box.innerHTML=`<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="Cycle pattern chart">${p.join('')}</svg>`;
+}
+
+/* ---------------- Cheat meals card ---------------- */
+function renderMeals(){
+  const el=$('#mealscard'); const u=unit();
+  if(!M.meals.length && !(S.mealTypes||[]).length){
+    el.innerHTML=`<h2>Cheat meals</h2><div class="small muted">Log cheat meals from the daily form. The app learns how much each kind bumps your weight and how fast that fades, then removes only the temporary bump. Any real gain stays in your trend.</div>`; return;
+  }
+  const morning = A => A*Math.exp(-(24+WEIGH_HOUR-SLOT_HOUR.d)/M.tau);   // dinner -> next-morning weigh-in
+  const ids=['generic', ...(S.mealTypes||[]).map(t=>t.id)];
+  const rows=ids.map(id=>{
+    const cnt=M.mealCounts[id]||0, used=M.meals.some(m=>m.t===id);
+    if(id==='generic' && !used) return '';
+    const amp = M.typeAmp[id] ?? M.typeAmp.generic;
+    const val = M.mealsSeen.length ? `${amp>=0?'+':'−'}${fmtW(Math.abs(morning(amp)))} ${u}` : '—';
+    const note = cnt===0 ? 'no weigh-ins after yet' : (id!=='generic' && cnt<3 ? `learning (${cnt} of 3), leaning on generic` : plural(cnt,'meal'));
+    return `<div class="ph-row"><div class="grow"><div class="ph-name">${esc(mealName(id))}</div><div class="small muted">${note}</div></div>
+      <div style="text-align:right"><div style="font-weight:650;font-variant-numeric:tabular-nums">${val}</div><div class="small muted">next morning</div></div>
+      ${id!=='generic' && !used ? `<button class="btn ghost small" data-rmt="${esc(id)}">Remove</button>`:''}</div>`;
+  }).join('');
+  const half=M.tau*Math.LN2, gone=M.tau*Math.log(5)/24;
+  el.innerHTML=`<h2>Cheat meals</h2>
+    <div class="small" style="color:var(--ink2);margin-bottom:4px">Typical bump the morning after a dinner, before it fades. Only this temporary part is removed from your trend.</div>
+    ${rows}
+    <div class="small muted" style="margin-top:8px">${M.mealsSeen.length ? `Spikes fade by half in about ${Math.round(half)} hours and are mostly gone after ~${gone.toFixed(1)} days (${M.tauLearned?`learned from your ${plural(M.mealsSeen.length,'meal')}`:`default until ${MIN_MEALS_FOR_TAU} meals are logged`}).` : ''} Lunch and breakfast bumps are smaller by the next morning because more time has passed.</div>`;
+  $$('[data-rmt]',el).forEach(b=>b.onclick=()=>{ S.mealTypes=S.mealTypes.filter(t=>t.id!==b.dataset.rmt); save(); renderAll(); });
+}
+
+/* ---------------- Phases ---------------- */
+function renderPhases(){
+  const el=$('#phases'), u=unit();
+  const rows = M.ph.map((p,j)=>{
+    if(ui.editPhase===p.id) return phaseEditor(p);
+    const end = j+1<M.ph.length ? fmtD(M.ph[j+1].sn-1) : 'now';
+    const actual = (M.cycleActive && p.slope!=null) ? `${fmtRate(p.slope*7)} ${u}/wk${p.nW<SETTLE_DAYS?' (settling)':''}` : '—';
+    return `<div class="ph-row"><div class="grow"><div class="ph-name">${esc(p.name)}</div>
+      <div class="small muted">${fmtD(p.sn)} → ${end} · ${plural(p.nW,'weigh-in')}</div>
+      <div class="small">Target <b>${fmtRate(p.target)}</b> ${u}/wk · Actual <b>${actual}</b> · Start ${fmtW(p.anchor)} ${u}${M.cycleActive && Math.abs(p.ramp)>=0.2 ? ` · Step at switch ${p.ramp>0?'+':'−'}${fmtW(Math.abs(p.ramp))} ${u}` : ''}</div></div>
+      <button class="btn ghost small noprint" data-edit="${p.id}">Edit</button></div>`;
+  });
+  if(ui.editPhase==='new') rows.push(phaseEditor(null));
+  el.innerHTML=`<div class="row" style="justify-content:space-between"><h2 style="margin:0">Phases</h2>${ui.editPhase?'':'<button class="link noprint" id="ph-add">+ Add phase</button>'}</div>${rows.join('')}`;
+  $$('[data-edit]',el).forEach(b=>b.onclick=()=>{ ui.editPhase=b.dataset.edit; renderPhases(); });
+  const add=$('#ph-add'); if(add) add.onclick=()=>{ ui.editPhase='new'; renderPhases(); };
+  if(ui.editPhase) wirePhaseEditor();
+}
+let peDir='maint';
+function phaseEditor(p){
+  peDir = !p ? 'maint' : p.target<0 ? 'lose' : p.target>0 ? 'gain' : 'maint';
+  return `<div class="ph-row" style="display:block" id="pe" data-id="${p?p.id:'new'}">
+    <div class="grid2"><div><label class="f" for="pe-start">Starts on</label><input type="date" id="pe-start" max="${todayStr()}" value="${p?p.start:todayStr()}"></div><div></div></div>
+    <div style="height:10px"></div>
+    ${goalFields('pe', unit())}
+    <div class="err" id="pe-err"></div>
+    <div class="row" style="margin-top:10px"><button class="btn small" id="pe-save">Save phase</button><button class="btn ghost small" id="pe-cancel">Cancel</button>${p && S.phases.length>1?'<button class="btn danger small" id="pe-del">Delete</button>':''}</div>
+    ${p && S.phases.length>1?'<div class="small muted" style="margin-top:6px">Deleting a phase merges its days into the phase before it.</div>':''}
+  </div>`;
+}
+function wirePhaseEditor(){
+  const box=$('#pe'); if(!box) return; const id=box.dataset.id; const p=S.phases.find(x=>x.id===id);
+  wireGoalFields('pe', peDir, v=>peDir=v, p && p.target ? +Math.abs(toDisp(p.target)).toFixed(2) : null);
+  if(p) $('#pe-name').value=p.name;
+  $('#pe-cancel').onclick=()=>{ ui.editPhase=null; renderPhases(); };
+  $('#pe-save').onclick=()=>{
+    const err=$('#pe-err'), start=$('#pe-start').value;
+    if(!start){ err.textContent='Pick a start date.'; return; }
+    if(start>todayStr()){ err.textContent='A phase can’t start in the future.'; return; }
+    if(S.phases.some(x=>x.start===start && x.id!==id)){ err.textContent='Another phase already starts on that date.'; return; }
+    const g=readGoal('pe', peDir); if(g.error){ err.textContent=g.error; return; }
+    if(p){ p.start=start; p.name=g.name; p.target=g.target; }
+    else S.phases.push({ id:uid(), name:g.name, start, target:g.target });
+    S.phases.sort((a,b)=>a.start<b.start?-1:1);
+    ui.editPhase=null; save(); renderAll(); toast('Phase saved');
+  };
+  const del=$('#pe-del'); if(del) del.onclick=async()=>{
+    if(!await dialog({title:'Delete phase?', body:`Delete “${esc(p.name)}”? Its days join the phase before it. No weights are deleted.`, ok:'Delete', danger:true})) return;
+    S.phases=S.phases.filter(x=>x.id!==id); ui.editPhase=null; save(); renderAll(); toast('Phase deleted');
+  };
+}
+
+/* ---------------- History ---------------- */
+function renderHistory(){
+  const el=$('#history'), u=unit();
+  const dates=Object.keys(S.entries).sort().reverse();
+  const starts=new Map(S.phases.map(p=>[p.start,p]));
+  const byN=new Map(M.days.map(x=>[x.d,x]));
+  const show=dates.slice(0,ui.historyLimit);
+  el.innerHTML=`<h2>History</h2>
+    ${dates.length?`<table><thead><tr><th>Date</th><th class="num">${u}</th><th class="num">Adj.</th><th class="num">kcal</th><th>Notes</th><th>Phase</th></tr></thead><tbody>
+    ${show.map(d=>{ const e=S.entries[d], x=byN.get(d), n=dnum(d), ph=starts.get(d), pi=M.phaseIdx(n);
+      const adj = (M.cycleActive && x && x.cyc && !x.cyc.paused) ? fmtW(x.adj) : '';
+      const per = [e.ps?'<span style="color:var(--period-ink)">● start</span>':'', e.pe?'<span class="muted">○ end</span>':'', ...(e.cm||[]).map(c=>'🍽 '+esc(mealName(c.t)))].filter(Boolean).join(' ');
+      return `<tr class="click" data-d="${d}"><td>${fmtD(n,true)}</td><td class="num">${e.w!=null?fmtW(e.w):'—'}</td><td class="num muted">${adj}</td><td class="num muted small">${e.m && e.m.kcal!=null ? Math.round(e.m.kcal) : ''}</td><td class="small">${per}</td><td class="small">${ph?'▶ '+esc(ph.name):'<span class="muted">'+esc(M.ph[pi]?M.ph[pi].name:'')+'</span>'}</td></tr>`; }).join('')}
+    </tbody></table>
+    ${dates.length>ui.historyLimit?`<div style="text-align:center;margin-top:8px"><button class="link" id="h-more">Show more (${dates.length-ui.historyLimit} older)</button></div>`:''}
+    <div class="small muted" style="margin-top:8px">Tap a row to change or delete it.</div>`
+    : '<div class="small muted">Nothing logged yet.</div>'}`;
+  $$('tr[data-d]',el).forEach(r=>r.onclick=()=>editDay(r.dataset.d));
+  const more=$('#h-more'); if(more) more.onclick=()=>{ ui.historyLimit+=60; renderHistory(); };
+}
+
+/* ---------------- Settings & backup ---------------- */
+function renderSettings(){
+  const el=$('#settings'), st=S.settings;
+  el.innerHTML=`<details><summary>Settings & backup</summary>
+    <div style="margin-top:12px">
+      <h2>Backup</h2>
+      <div class="small muted" style="margin-bottom:8px">Last backup: ${st.lastBackup?fmtD(dnum(st.lastBackup),true):'never'}. A backup is one small file. Save it to iCloud Drive (Files).</div>
+      <div class="row"><button class="btn small" id="s-backup">Back up now</button><button class="btn ghost small" id="s-restore">Restore from backup</button><button class="btn ghost small" id="s-csv">Export for Excel (CSV)</button></div>
+      <input type="file" id="s-file" accept=".json,application/json" class="hidden">
+      <hr>
+      <h2>Units</h2>
+      <div class="seg" id="s-unit"><button data-u="lb">lb</button><button data-u="kg">kg</button></div>
+      <hr>
+      <h2>Cycle</h2>
+      <div class="small" style="margin-bottom:8px">Using <b>${M.typ} days</b> (${M.lenSource}).</div>
+      <div class="grid2">
+        <div><label class="f" for="s-base">Starting estimate (days)</label><input type="number" id="s-base" inputmode="numeric" min="15" max="60" value="${st.baseCycleLen}"></div>
+        <div><label class="f" for="s-ovr">Fixed length (blank = automatic)</label><input type="number" id="s-ovr" inputmode="numeric" min="15" max="60" value="${st.cycleLenOverride||''}" placeholder="auto"></div>
+        <div><label class="f" for="s-fwd">Days matched from period start</label><input type="number" id="s-fwd" inputmode="numeric" min="1" max="10" value="${st.fwdDays}"></div>
+        <div><label class="f" for="s-back">Days matched before next period</label><input type="number" id="s-back" inputmode="numeric" min="1" max="10" value="${st.backDays}"></div>
+      </div>
+      <div class="small muted" style="margin-top:6px">Automatic uses the median of your last 6 logged cycles once you have logged 3 period starts.</div>
+      <hr>
+      <h2>How it works</h2>
+      <div class="small" style="color:var(--ink2)">Each phase gets its own straight trend line. A single cycle-shape curve, learned from all your days, is fitted at the same time and taken out, so day 5 is only ever compared with other day 5s. Unusual days (a salty dinner, travel) are automatically down-weighted. Until your next period starts, the app places this cycle’s later days using a predicted date, so the latest adjusted values can shift slightly when you log it.${M.cycleActive?` Current day-to-day noise: about ±${fmtW(M.sigma)} ${unit()}.`:''}</div>
+      <hr>
+      <button class="btn danger small" id="s-erase">Erase all data on this device</button>
+      ${DEMO?'<button class="btn ghost small" id="s-redemo" style="margin-left:6px">Regenerate demo</button>':''}
+    </div></details>`;
+  $('#s-backup').onclick=backup;
+  $('#s-restore').onclick=()=>$('#s-file').click();
+  $('#s-file').onchange=e=>importFile(e.target.files[0]);
+  $('#s-csv').onclick=exportCSV;
+  $$('#s-unit button').forEach(b=>{ b.classList.toggle('on',b.dataset.u===st.unit); b.onclick=()=>{ st.unit=b.dataset.u; save(); renderAll(); openSettings(); }; });
+  const num=(id,key,lo,hi,allowBlank)=>{ $(id).onchange=e=>{ const v=e.target.value.trim(); if(allowBlank && v===''){ st[key]=null; } else { const n=clampInt(v,lo,hi,NaN); if(!isFinite(n)){ toast(`Use a number from ${lo} to ${hi}`); e.target.value=st[key]??''; return; } st[key]=n; } save(); renderAll(); openSettings(); }; };
+  num('#s-base','baseCycleLen',15,60); num('#s-ovr','cycleLenOverride',15,60,true); num('#s-fwd','fwdDays',1,10); num('#s-back','backDays',1,10);
+  $('#s-erase').onclick=async()=>{
+    if(!await dialog({title:'Erase everything?', body:`This permanently deletes all ${plural(Object.keys(S.entries).length,'day')} and ${plural(S.phases.length,'phase')} from this device. It can’t be undone unless you have a backup file.`, ok:'Erase all', danger:true})) return;
+    try{ localStorage.removeItem(KEY); }catch(e){} S=null; renderAll();
+  };
+  const rd=$('#s-redemo'); if(rd) rd.onclick=()=>{ S=makeDemo(); save(); renderAll(); };
+}
+function openSettings(){ const d=$('#settings details'); if(d) d.open=true; }
+
+async function backup(){
+  const json=JSON.stringify(S);
+  const name=`cycle-weight-backup-${todayStr()}.json`;
+  let file=null; try{ file=new File([json],name,{type:'application/json'}); }catch(e){}
+  try{
+    if(file && navigator.canShare && navigator.canShare({files:[file]})){
+      await navigator.share({files:[file], title:'Cycle Weight backup'});
+      markBackup(); return;
+    }
+  }catch(e){ if(e && e.name==='AbortError') return; }
+  const blob=file||new Blob([json],{type:'application/json'});
+  const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),4000);
+  markBackup();
+}
+function markBackup(){ S.settings.lastBackup=todayStr(); save(); renderBanners(); renderSettings(); toast('Backup created'); }
+function importFile(f){
+  if(!f) return;
+  const r=new FileReader();
+  r.onload=async()=>{
+    let d; try{ d=migrate(JSON.parse(r.result)); }catch(e){ await dialog({title:'Couldn’t read that file', body:'It doesn’t look like a Cycle Weight backup.', ok:'OK', cancel:null}); return; }
+    const nNew=Object.keys(d.entries).length;
+    if(S){ const nOld=Object.keys(S.entries).length;
+      if(!await dialog({title:'Restore this backup?', body:`This replaces what’s on this device (${plural(nOld,'day')}) with the backup (${plural(nNew,'day')}, ${plural(d.phases.length,'phase')}).`, ok:'Restore', danger:true})) return; }
+    if(!d.phases.length){ const first=Object.keys(d.entries).sort()[0]||todayStr(); d.phases=[{id:uid(),name:'Maintain',start:first,target:0}]; }
+    S=d; save(); renderAll(); toast('Restored '+plural(nNew,'day'));
+  };
+  r.readAsText(f);
+}
+function exportCSV(){
+  const u=unit(); const byD=new Map(M.days.map(x=>[x.d,x]));
+  const lines=[['Date',`Weight (${u})`,'Period start','Period end','Phase',`Target (${u}/wk)`,`Cycle-adjusted (${u})`,'Cycle day','Calories','Protein (g)','Carbs (g)','Fat (g)','Cheat meals'].join(',')];
+  Object.keys(S.entries).sort().forEach(d=>{ const e=S.entries[d], x=byD.get(d), n=dnum(d), p=M.ph[M.phaseIdx(n)], ci=M.cycleInfo(n);
+    lines.push([d, e.w!=null?toDisp(e.w).toFixed(1):'', e.ps?'yes':'', e.pe?'yes':'', '"'+(p?p.name.replace(/"/g,'""'):'')+'"', p?toDisp(p.target).toFixed(2):'', (x && M.cycleActive && x.cyc && !x.cyc.paused)?toDisp(x.adj).toFixed(1):'', ci?ci.k+1:'', ...MKEYS.map(k=>e.m && e.m[k]!=null ? e.m[k] : ''), '"'+(e.cm||[]).map(c=>mealName(c.t)+' ('+SLOT_NAME[c.s]+')').join('; ').replace(/"/g,'""')+'"'].join(',')); });
+  const blob=new Blob([lines.join('\n')],{type:'text/csv'}); const name=`cycle-weight-${todayStr()}.csv`;
+  let file=null; try{ file=new File([blob],name,{type:'text/csv'}); }catch(e){}
+  if(file && navigator.canShare && navigator.canShare({files:[file]})){ navigator.share({files:[file]}).catch(()=>{}); return; }
+  const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),4000);
+}
+
+/* ============================================================
+   Boot
+   ============================================================ */
+let rz; window.addEventListener('resize',()=>{ clearTimeout(rz); rz=setTimeout(()=>{ if(S&&M){ renderChart(); renderPattern(); } },150); });
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden && S && M && M.todayN!==dnum(todayStr())) renderAll(); });
+(function icon(){ try{ const c=document.createElement('canvas'); c.width=c.height=180; const g=c.getContext('2d');
+  g.fillStyle='#2a78d6'; g.fillRect(0,0,180,180);
+  g.strokeStyle='rgba(255,255,255,.45)'; g.lineWidth=7; g.lineCap='round'; g.beginPath(); for(let i=0;i<=60;i++){ const x=24+i*2.2, y=96-i*0.55+Math.sin(i/60*Math.PI*4)*18; i?g.lineTo(x,y):g.moveTo(x,y);} g.stroke();
+  g.strokeStyle='#fff'; g.lineWidth=11; g.beginPath(); g.moveTo(24,100); g.lineTo(156,66); g.stroke();
+  const l=document.createElement('link'); l.rel='apple-touch-icon'; l.href=c.toDataURL('image/png'); document.head.appendChild(l);
+  const f=document.createElement('link'); f.rel='icon'; f.href=l.href; document.head.appendChild(f); }catch(e){} })();
+if('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) navigator.serviceWorker.register('sw.js').catch(()=>{});
+
+renderAll();
+window.CWT = { get S(){ return S; }, get M(){ return M; }, computeModel, cyclePos, renderAll,
+  // test hook: fit a demo dataset without touching storage or the screen
+  simulate(opts, jp){ const oldS=S, oldJ=JUMP_PENALTY; try{ S=makeDemo(opts); if(jp!=null) JUMP_PENALTY=jp; return computeModel(); } finally { S=oldS; JUMP_PENALTY=oldJ; } } };
+})();
+</script>
+</body>
+</html>
