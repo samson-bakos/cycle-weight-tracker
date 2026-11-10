@@ -169,7 +169,20 @@ const PARAMS = new URLSearchParams(location.search);
 const DEMO = PARAMS.has('demo');
 const KEY = DEMO ? 'cycleWeightTracker.demo.v1' : 'cycleWeightTracker.v1';
 const K_HARM = 4;            // harmonics in the cycle-shape curve
-const MIN_CYCLES = 2;        // full cycles of weigh-ins before cycle adjustment turns on
+const MIN_CYCLES = 2;        // full cycles of weigh-ins before her own pattern dominates the typical one
+const CYCLE_PRIOR = 15;      // strength of the typical-pattern prior (≈ days of evidence per coefficient)
+const TPL_BUMP = 1.0, TPL_DIP = -0.5;   // typical pattern: +1 lb just before the period, −0.5 lb in the week after
+// ---- Calorie coaching (Kalman estimate → PID on rate error)
+const KCAL_PER_LB = 3500;
+const KF_QW = 0.05*0.05;            // lb² per day: small day-to-day drift in true weight
+let   KF_RATE_DRIFT = 0.02;         // lb/wk per day: how fast her true rate can wander
+const KF_PHASE_W_VAR = 1.0;         // lb²: allow a level step (water/glycogen) at a phase change
+const KF_PHASE_RATE_SD = 0.3;       // lb/wk: extra rate uncertainty at a phase change
+const KF_RATE0_SD = 1.0;            // lb/wk: initial rate uncertainty
+const COACH_DEFAULTS = { on:true, day:0, min:null, max:null, step:100, gran:25, pPerLb:null, fPerLb:null, kp:175, ki:25, kd:25 };   // tuned by closed-loop simulation (simCoach)
+const COACH_MIN_WEIGHINS = 4;       // in the 7 days before a check-in
+const COACH_MAX_RATE_SD = 0.6;      // lb/wk: hold if the current-rate estimate is vaguer than this
+const COACH_ID_WEEK = 3;            // I and D switch on from this week of a phase
 const SETTLE_DAYS = 10;      // weigh-ins before a phase's fitted line is shown at full strength
 const LATE_PAUSE = 7;        // days past predicted period before adjustment pauses
 const ON_TRACK_TOL = 0.15;   // lb/week dead-band for "on track"
@@ -193,7 +206,8 @@ const pad = n => String(n).padStart(2,'0');
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function dnum(s){ const [y,m,d] = s.split('-').map(Number); return Math.round(Date.UTC(y,m-1,d)/DAY); }
 function dstr(n){ return new Date(n*DAY).toISOString().slice(0,10); }
-function todayStr(){ const t=new Date(); return t.getFullYear()+'-'+pad(t.getMonth()+1)+'-'+pad(t.getDate()); }
+let TODAY_OVERRIDE = null;   // simulation only
+function todayStr(){ if(TODAY_OVERRIDE) return TODAY_OVERRIDE; const t=new Date(); return t.getFullYear()+'-'+pad(t.getMonth()+1)+'-'+pad(t.getDate()); }
 function fmtD(n, dow){ const d=new Date(n*DAY); const yr = d.getUTCFullYear()!==new Date().getFullYear() ? ' '+d.getUTCFullYear() : ''; return (dow? DOW[d.getUTCDay()]+' ' : '') + MON[d.getUTCMonth()]+' '+d.getUTCDate()+yr; }
 function median(a){ if(!a.length) return NaN; const s=[...a].sort((x,y)=>x-y); const m=s.length>>1; return s.length%2 ? s[m] : (s[m-1]+s[m])/2; }
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
@@ -205,7 +219,7 @@ function parseNum(t){ if(t==null) return NaN; t=String(t).trim().replace(',', '.
    ============================================================ */
 let storageOK = true;
 function defaults(){
-  return { version:1, settings:{ unit:'lb', baseCycleLen:26, cycleLenOverride:null, fwdDays:7, backDays:7, lastBackup:null, created:todayStr() }, entries:{}, phases:[], mealTypes:[] };
+  return { version:1, settings:{ unit:'lb', baseCycleLen:26, cycleLenOverride:null, fwdDays:7, backDays:7, lastBackup:null, created:todayStr() }, entries:{}, phases:[], mealTypes:[], checkins:[] };
 }
 function migrate(d){
   if(!d || typeof d!=='object' || !d.entries || !Array.isArray(d.phases)) throw new Error('Not a Cycle Weight backup');
@@ -226,10 +240,28 @@ function migrate(d){
   }
   for(const p of d.phases){
     if(!p || !/^\d{4}-\d{2}-\d{2}$/.test(p.start)) continue;
-    out.phases.push({ id:p.id||uid(), name:String(p.name||'Phase').slice(0,40), start:p.start, target:Number(p.target)||0 });
+    const ph = { id:p.id||uid(), name:String(p.name||'Phase').slice(0,40), start:p.start, target:Number(p.target)||0 };
+    const co = cleanCoach(p.coach); if(co) ph.coach = co;
+    out.phases.push(ph);
   }
   out.phases.sort((a,b)=>a.start<b.start?-1:1);
+  out.checkins = Array.isArray(d.checkins) ? d.checkins.filter(c=>c && c.pid && /^\d{4}-\d{2}-\d{2}$/.test(c.date)).map(c=>({
+    pid:String(c.pid), date:c.date, before:num(c.before), rec:num(c.rec), after:num(c.after), chosen:String(c.chosen||''), why:String(c.why||'').slice(0,300),
+    terms: c.terms && typeof c.terms==='object' ? { p:num(c.terms.p), i:num(c.terms.i), d:num(c.terms.d), rate:num(c.terms.rate), gap:num(c.terms.gap) } : null })) : [];
   return out;
+}
+function num(v){ const x=Number(v); return (v==null || v==='' || !isFinite(x)) ? null : x; }
+function cleanCoach(c){
+  if(!c || typeof c!=='object') return null;
+  const o={ on: c.on!==false };
+  ['day','min','max','step','gran','pPerLb','fPerLb','kp','ki','kd'].forEach(k=>{ const v=num(c[k]); if(v!=null) o[k]=v; });
+  return o;
+}
+const coachCfg = p => Object.assign({}, COACH_DEFAULTS, (p && p.coach) || {});
+function prevCoach(startDate){   // a new phase copies the coaching settings of the phase before it
+  const before = S.phases.filter(x=>x.start<startDate).sort((a,b)=>a.start<b.start?-1:1);
+  const src = before.length ? before[before.length-1] : S.phases[S.phases.length-1];
+  return src && src.coach ? JSON.parse(JSON.stringify(src.coach)) : undefined;
 }
 function load(){
   try{
@@ -346,7 +378,17 @@ function computeModel(){
     const cnt = days.filter(x=>x.n>=a && x.n<b).length;
     if(cnt >= Math.min(10, Math.ceil((b-a)*0.4))) cyclesWithData++;
   }
-  const cycleActive = cyclesWithData >= MIN_CYCLES;
+  // A typical (population) cycle shape is the starting point; her own data pulls the
+  // curve toward her pattern, so adjustment works from her first logged period.
+  const cycleActive = starts.length > 0;
+  const personalised = cyclesWithData >= MIN_CYCLES;
+  const tplC = new Array(K_HARM+1).fill(0), tplN = new Array(K_HARM+1).fill(0);
+  {
+    const dd=(a,b)=>{ const d=Math.abs(a-b); return Math.min(d, Cref-d); };
+    const f=c=> TPL_BUMP*Math.exp(-Math.pow(dd(c,Cref-1.5),2)/(2*2.5*2.5)) + TPL_DIP*Math.exp(-Math.pow(dd(c,F+2),2)/(2*3*3));
+    const NS=520; let mean=0; const vals=[]; for(let i=0;i<NS;i++){ const c=i/NS*Cref, v=f(c); vals.push([c,v]); mean+=v/NS; }
+    for(let h=1;h<=K_HARM;h++){ let a=0,b=0; for(const [c,v] of vals){ const t=2*Math.PI*h*c/Cref; a+=(v-mean)*Math.cos(t); b+=(v-mean)*Math.sin(t); } tplC[h]=2*a/NS; tplN[h]=2*b/NS; }
+  }
 
   // design columns
   const cols=[]; let anyPrev=false;
@@ -389,7 +431,8 @@ function computeModel(){
       case 'T': { let s=0; for(const o of x.meals) if(o.ml.t===c.id) s+=Math.exp(-o.h/tau); return s; }
     }
   }
-  const pen = c => (c.t==='C'||c.t==='N') ? 0.2*Math.pow(c.h,3)   // smoothness: higher harmonics shrink more
+  const prior = c => c.t==='C' ? tplC[c.h] : c.t==='N' ? tplN[c.h] : 0;   // cycle terms shrink toward the typical shape
+  const pen = c => (c.t==='C'||c.t==='N') ? CYCLE_PRIOR + 0.2*Math.pow(c.h,3)   // smoothness: higher harmonics shrink more
                  : c.t==='G' ? GENERIC_MEAL_PENALTY : c.t==='T' ? TYPE_MEAL_PENALTY : 1e-7;
   // Phase transitions. Trend in phase j = L_j + R_j·(ramp−1) + S_j·(n−start):
   // it starts at L_j − R_j and reaches L_j after RAMP_DAYS (water/glycogen don't
@@ -429,7 +472,7 @@ function computeModel(){
         const xi=X[i], wi=f.wts[i];
         for(let a=0;a<P;a++){ const xa=xi[a]; if(!xa) continue; bb[a][0]+=wi*xa*y[i]; for(let b=a;b<P;b++){ if(xi[b]) A[a][b]+=wi*xa*xi[b]; } }
       }
-      for(let a=0;a<P;a++){ for(let b=0;b<a;b++) A[a][b]=A[b][a]; A[a][a]+=pen(cols[a]); }
+      for(let a=0;a<P;a++){ for(let b=0;b<a;b++) A[a][b]=A[b][a]; A[a][a]+=pen(cols[a]); bb[a][0]+=pen(cols[a])*prior(cols[a]); }
       for(const [lam,v] of jumpPen) for(const [a,va] of v) for(const [b,vb] of v) A[a][b]+=lam*va*vb;
       const sol = gaussJordan(A, bb); if(!sol) break;
       f.A = A; f.beta = sol.map(r=>r[0]);
@@ -509,6 +552,39 @@ function computeModel(){
   });
   const targetAt = (j,n) => { const p=ph[j]; if(!p || p.anchor==null) return null; return p.anchor + (p.target/7)*(n-p.sn); };
 
+  // ---- Kalman filter: her current (adjusted) weight and rate, for calorie coaching.
+  // State [w, r] (lb, lb/day). Logged calorie changes are a known input
+  // (Δkcal/3500 lb/day). Phase changes loosen the state so it relearns quickly.
+  const kcalList = dates.filter(d=>S.entries[d].m && S.entries[d].m.kcal!=null).map(d=>[dnum(d), S.entries[d].m.kcal]);
+  const kcalAt = n => { let v=null; for(const [k,c] of kcalList){ if(k<=n) v=c; else break; } return v; };
+  const KF = new Map();
+  if(days.length){
+    const R0 = Math.pow(Math.max(0.3, isFinite(sigma)?sigma:0.5), 2);
+    const QR = Math.pow(KF_RATE_DRIFT/7, 2);
+    const byN = new Map(days.map(x=>[x.n,x])), phaseStarts = new Set(ph.slice(1).map(p=>p.sn));
+    let w=days[0].adj, r=0, Pww=R0, Pwr=0, Prr=Math.pow(KF_RATE0_SD/7,2), prevK=kcalAt(days[0].n);
+    const end = Math.max(todayN, days[days.length-1].n);
+    for(let n=days[0].n; n<=end; n++){
+      if(n>days[0].n){
+        const a=Pww+2*Pwr+Prr+KF_QW, b=Pwr+Prr, c=Prr+QR;
+        w=w+r; Pww=a; Pwr=b; Prr=c;
+        const k=kcalAt(n);
+        if(k!=null && prevK!=null && k!==prevK){ const dr=(k-prevK)/KCAL_PER_LB; r+=dr; Prr+=Math.pow(0.5*dr,2); }
+        if(k!=null) prevK=k;
+        if(phaseStarts.has(n)){ Pww+=KF_PHASE_W_VAR; Prr+=Math.pow(KF_PHASE_RATE_SD/7,2); }
+      }
+      const x=byN.get(n);
+      if(x){
+        const nu=x.adj-w, z=Math.abs(nu)/Math.sqrt(Pww+R0);
+        const Re = z>2.5 ? R0*Math.pow(z/2.5,2) : R0;      // robust: big surprises count for less
+        const Sv=Pww+Re, Kw=Pww/Sv, Kr=Pwr/Sv;
+        w+=Kw*nu; r+=Kr*nu;
+        const nPww=(1-Kw)*Pww, nPwr=(1-Kw)*Pwr, nPrr=Prr-Kr*Pwr; Pww=nPww; Pwr=nPwr; Prr=nPrr;
+      }
+      KF.set(n, { w, r, rateWk:r*7, rateSdWk:Math.sqrt(Math.max(0,Prr))*7, wSd:Math.sqrt(Math.max(0,Pww)) });
+    }
+  }
+
   const lastStart = starts.length ? starts[starts.length-1] : null;
   const cur = lastStart==null ? null : (()=>{
     const predicted = lastStart+typ;
@@ -520,9 +596,88 @@ function computeModel(){
     todayN, F, B, typ, lenSource, Cref, lengths, starts, days, ph, cycleActive, cyclesWithData,
     curve, trendAt, targetAt, sigma, rho, cur, curPhase: ph.length ? phaseIdx(todayN) : -1,
     phaseIdx, firstN: allN.length ? Math.min(...allN) : todayN, cycleInfo,
-    meals, mealsSeen, typeAmp, tau, tauLearned, mealEffN, mealCounts
+    meals, mealsSeen, typeAmp, tau, tauLearned, mealEffN, mealCounts,
+    personalised, KF, kcalAt
   };
 }
+/* ============================================================
+   Calorie coaching: weekly PID on rate error, fed by the Kalman estimate.
+   Incremental form, starting from her LOGGED calories, nothing stored:
+     P = −Kp·(rate − target rate)            [lb/wk → kcal/day]
+     I = −Ki·(weight − target line)          [the gap; from week 3]
+     D = −Kd·(change in rate error vs last week)   [from week 3]
+   then: half-strength P only until her cycle is personalised;
+   cap at ±step, round to granularity, keep within min/max.
+   ============================================================ */
+const dow = n => new Date(n*DAY).getUTCDay();
+function checkinDays(M, j){
+  const p=M.ph[j]; if(!p) return []; const c=coachCfg(p); const out=[];
+  const end = j+1<M.ph.length ? M.ph[j+1].sn-1 : M.todayN;
+  for(let n=p.sn+7; n<=end; n++) if(dow(n)===((c.day%7)+7)%7) out.push(n);
+  return out;
+}
+function pendingCheckin(M, j){
+  const p=M.ph[j]; if(!p || !coachCfg(p).on) return null;
+  const ds=checkinDays(M,j); if(!ds.length) return null;
+  const d=ds[ds.length-1], done=(S.checkins||[]).some(x=>x.pid===p.id && dnum(x.date)>=d);
+  return done ? null : d;
+}
+function nextCheckin(M, j){
+  const p=M.ph[j]; if(!p) return null; const c=coachCfg(p);
+  for(let n=Math.max(p.sn+7, M.todayN+1); n<M.todayN+15; n++) if(dow(n)===((c.day%7)+7)%7) return n;
+  return null;
+}
+function coachRec(M, j, d){
+  const p=M.ph[j], c=coachCfg(p);
+  const cur=M.kcalAt(d);
+  const base={ d, cur, cfg:c };
+  if(cur==null) return Object.assign(base,{ kind:'nokcal', why:'Enter your current calories in the daily form to start coaching.' });
+  const n7=M.days.filter(x=>x.n>d-7 && x.n<=d).length;
+  if(n7<COACH_MIN_WEIGHINS) return Object.assign(base,{ kind:'hold', delta:0, next:cur, why:`Only ${plural(n7,'weigh-in')} in the past week (needs ${COACH_MIN_WEIGHINS}). Holding calories.` });
+  const k=M.KF.get(d);
+  if(!k) return Object.assign(base,{ kind:'hold', delta:0, next:cur, why:'Not enough data yet. Holding calories.' });
+  if(k.rateSdWk>COACH_MAX_RATE_SD) return Object.assign(base,{ kind:'hold', delta:0, next:cur, rate:k.rateWk, rateSd:k.rateSdWk, why:`Your current trend isn’t clear enough yet (±${k.rateSdWk.toFixed(2)} lb/wk). Holding calories.` });
+  const week=Math.floor((d-p.sn)/7);
+  const eR=k.rateWk-p.target;
+  const tl=M.targetAt(j,d), gap = tl!=null ? k.w-tl : 0;
+  const full=M.personalised, idOn = full && week>=COACH_ID_WEEK;
+  let P=-c.kp*eR, I=0, D=0;
+  if(!full) P*=0.5;
+  if(idOn){
+    I=-c.ki*gap;
+    const kp=M.KF.get(d-7); if(kp) D=-c.kd*(eR-(kp.rateWk-p.target));
+  }
+  const raw=P+I+D;
+  let step=Math.max(-c.step, Math.min(c.step, raw));
+  step=Math.round(step/c.gran)*c.gran;
+  let next=cur+step;
+  if(c.min!=null) next=Math.max(c.min,next);
+  if(c.max!=null) next=Math.min(c.max,next);
+  const delta=next-cur;
+  const u=unit();
+  const rateTxt = `trend ${fmtRate(k.rateWk)} ${u}/wk vs target ${fmtRate(p.target)}`;
+  const gapTxt = Math.abs(gap)<0.05 ? 'on the target line' : `${fmtW(Math.abs(gap))} ${unit()} ${gap>0?'above':'below'} the target line`;
+  let why = `Current ${rateTxt}; ${gapTxt}.`;
+  if(delta===0){
+    const capped = (c.min!=null && next===c.min && raw<0) || (c.max!=null && next===c.max && raw>0);
+    why += capped ? ` Already at your ${raw<0?'minimum':'maximum'} calories.` : ` Change would be under ${c.gran} kcal, so hold.`;
+  }
+  return Object.assign(base,{ kind: delta===0 ? 'hold' : 'change', delta, next, raw, P, I, D, rate:k.rateWk, rateSd:k.rateSdWk, gap, week, full, idOn, trendW:k.w, why });
+}
+function recMacros(kcal, cfg, trendW, curM){
+  const r5=v=>Math.round(v/5)*5;
+  if(cfg.pPerLb && cfg.fPerLb && trendW){
+    const P=r5(cfg.pPerLb*trendW), F=r5(cfg.fPerLb*trendW), C=r5((kcal-4*P-9*F)/4);
+    if(C<0) return { kcal, warn:'Protein and fat targets leave no room for carbs at these calories.' };
+    return { kcal, p:P, c:C, f:F, src:'ratios' };
+  }
+  if(curM && curM.p!=null && curM.c!=null && curM.f!=null && curM.kcal!=null){
+    const C=r5(curM.c+(kcal-curM.kcal)/4);
+    if(C>=0) return { kcal, p:curM.p, c:C, f:curM.f, src:'carbs' };
+  }
+  return { kcal };
+}
+
 function clampInt(v, lo, hi, def){ v = Math.round(Number(v)); return isFinite(v) ? Math.min(hi, Math.max(lo, v)) : def; }
 
 /* ============================================================
@@ -705,6 +860,7 @@ function renderAll(){
   <div id="banners"></div>
 
   <div class="card" id="headline"></div>
+  <div class="card hidden" id="coach"></div>
 
   <div class="card noprint" id="entry">
     <div class="row" style="justify-content:space-between"><h2 style="margin:0">Log a day</h2><span id="f-mode" class="badge hidden"></span></div>
@@ -739,7 +895,7 @@ function renderAll(){
     <div style="margin-top:10px"><button class="link" id="f-np-t">+ Start a new phase on this day</button><span id="f-phnote" class="small muted"></span></div>
     <div id="f-np" class="hidden" style="margin-top:6px;padding:12px;border:1px dashed var(--line2);border-radius:12px">
       ${goalFields('fp', unit())}
-      <div class="small muted" style="margin-top:8px">The target line starts from your cycle-adjusted weight over the 7 days before this date.</div>
+      <div class="small muted" style="margin-top:8px">The target line starts from your trend weight on this date. Set this phase’s starting calories in Food above. Calorie-coaching settings copy from your previous phase (edit them under Phases).</div>
     </div>
     <div class="err" id="f-err"></div>
     <div class="row" style="margin-top:10px">
@@ -765,7 +921,7 @@ function renderAll(){
   <div class="card noprint" id="settings"></div>
   <div class="small muted" style="text-align:center;margin:16px 0 4px">Your data is stored only on this device. Back it up now and then.</div>
   `;
-  renderHeader(); renderBanners(); renderHeadline(); wireForm(); renderChart(); renderPattern(); renderMeals(); renderPhases(); renderHistory(); renderSettings();
+  renderHeader(); renderBanners(); renderHeadline(); renderCoach(); wireForm(); renderChart(); renderPattern(); renderMeals(); renderPhases(); renderHistory(); renderSettings();
   $$('#rng button').forEach(b=>{ b.classList.toggle('on', b.dataset.r===ui.range); b.onclick=()=>{ ui.range=b.dataset.r; $$('#rng button').forEach(x=>x.classList.toggle('on',x===b)); renderChart(); }; });
 }
 
@@ -807,6 +963,11 @@ function statusPill(kind, label){
   return `<span class="status"><span class="dot" style="background:${col}">${ic}</span>${esc(label)}</span>`;
 }
 function renderHeadline(){
+  renderHeadlineCore();
+  if(M.cycleActive && !M.personalised) $('#headline').insertAdjacentHTML('beforeend',
+    `<div class="small muted" style="margin-top:8px">🔄 Personalising your cycle pattern (${M.cyclesWithData} of ${MIN_CYCLES} cycles). Until then the app starts from a typical pattern and blends yours in.</div>`);
+}
+function renderHeadlineCore(){
   const el=$('#headline'); const j=M.curPhase; const p=M.ph[j];
   if(!p){ el.innerHTML='<div class="muted">No phase yet.</div>'; return; }
   const u=unit();
@@ -914,7 +1075,7 @@ function wireForm(){
     if(goal){
       const exist=S.phases.find(p=>p.start===d);
       if(exist){ if(!await dialog({title:'Replace phase?', body:`“${esc(exist.name)}” already starts on ${fmtD(n,true)}. Replace it with “${esc(goal.name)}”?`, ok:'Replace'})) return; S.phases=S.phases.filter(p=>p!==exist); }
-      S.phases.push({ id:uid(), name:goal.name, start:d, target:goal.target }); S.phases.sort((a,b)=>a.start<b.start?-1:1);
+      const co=prevCoach(d); S.phases.push(Object.assign({ id:uid(), name:goal.name, start:d, target:goal.target }, co?{coach:co}:{})); S.phases.sort((a,b)=>a.start<b.start?-1:1);
     }
     const e={ w:lb, ps:ps.checked, pe:pe.checked };
     if(m) e.m=m;
@@ -1187,7 +1348,7 @@ function renderPattern(){
   const vals=pts.map(o=>o.v).concat([cmax,cmin]);
   let lo=Math.max(-5,Math.min(...vals)), hi=Math.min(5,Math.max(...vals)); const pd=Math.max(0.3,(hi-lo)*0.08); lo-=pd; hi+=pd;
   el.innerHTML=`<h2>Your cycle pattern</h2>
-    <div class="small" style="color:var(--ink2);margin-bottom:6px">Typically <b>${fmtW(cmax)} ${u} above</b> trend around cycle day ${Math.round(cmaxAt)+1} and <b>${fmtW(-cmin)} ${u} below</b> around day ${Math.round(cminAt)+1}. This is what gets removed.</div>
+    <div class="small" style="color:var(--ink2);margin-bottom:6px">${M.personalised ? '' : `<b>Starting from a typical pattern</b>; yours blends in as you log cycles (${M.cyclesWithData} of ${MIN_CYCLES}). `}Typically <b>${fmtW(cmax)} ${u} above</b> trend around cycle day ${Math.round(cmaxAt)+1} and <b>${fmtW(-cmin)} ${u} below</b> around day ${Math.round(cminAt)+1}. This is what gets removed.</div>
     <div class="chartbox" id="patchart"></div>
     <div class="legend"><span><span class="sw" style="border-color:var(--main);border-top-width:3px"></span>Typical effect</span><span><svg width="10" height="10"><circle cx="5" cy="5" r="3" fill="var(--raw)" opacity=".6"/></svg>Your days (minus trend)</span><span><span style="display:inline-block;width:14px;height:10px;background:var(--period-band);border-radius:2px"></span>First week</span><span><span style="display:inline-block;width:14px;height:10px;background:var(--prov);border:1px solid var(--prov-line);border-radius:2px"></span>Week before period</span></div>
     <div class="small muted" style="margin-top:6px">Typical cycle: ${M.typ} days (${M.lenSource}). Days 1–${M.F} are lined up from the period start and the last ${M.B} days from the next start; the middle is stretched to fit.</div>`;
@@ -1255,6 +1416,7 @@ function phaseEditor(p){
     <div class="grid2"><div><label class="f" for="pe-start">Starts on</label><input type="date" id="pe-start" max="${todayStr()}" value="${p?p.start:todayStr()}"></div><div></div></div>
     <div style="height:10px"></div>
     ${goalFields('pe', unit())}
+    ${coachFields(p ? coachCfg(p) : Object.assign({}, COACH_DEFAULTS, prevCoach(todayStr())||{}))}
     <div class="err" id="pe-err"></div>
     <div class="row" style="margin-top:10px"><button class="btn small" id="pe-save">Save phase</button><button class="btn ghost small" id="pe-cancel">Cancel</button>${p && S.phases.length>1?'<button class="btn danger small" id="pe-del">Delete</button>':''}</div>
     ${p && S.phases.length>1?'<div class="small muted" style="margin-top:6px">Deleting a phase merges its days into the phase before it.</div>':''}
@@ -1271,8 +1433,9 @@ function wirePhaseEditor(){
     if(start>todayStr()){ err.textContent='A phase can’t start in the future.'; return; }
     if(S.phases.some(x=>x.start===start && x.id!==id)){ err.textContent='Another phase already starts on that date.'; return; }
     const g=readGoal('pe', peDir); if(g.error){ err.textContent=g.error; return; }
-    if(p){ p.start=start; p.name=g.name; p.target=g.target; }
-    else S.phases.push({ id:uid(), name:g.name, start, target:g.target });
+    const co=readCoach(); if(co.error){ err.textContent=co.error; return; }
+    if(p){ p.start=start; p.name=g.name; p.target=g.target; p.coach=co.coach; }
+    else S.phases.push({ id:uid(), name:g.name, start, target:g.target, coach:co.coach });
     S.phases.sort((a,b)=>a.start<b.start?-1:1);
     ui.editPhase=null; save(); renderAll(); toast('Phase saved');
   };
@@ -1280,6 +1443,101 @@ function wirePhaseEditor(){
     if(!await dialog({title:'Delete phase?', body:`Delete “${esc(p.name)}”? Its days join the phase before it. No weights are deleted.`, ok:'Delete', danger:true})) return;
     S.phases=S.phases.filter(x=>x.id!==id); ui.editPhase=null; save(); renderAll(); toast('Phase deleted');
   };
+}
+
+const DOW_FULL=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+function coachFields(c){
+  const kg=unit()==='kg', gU=kg?'g/kg':'g/lb', show=v=>v==null?'':+(kg?v*LB_PER_KG:v).toFixed(2);
+  return `<details style="margin-top:12px;border:1px solid var(--line2);border-radius:12px;padding:10px 12px" open><summary>Calorie coaching</summary>
+    <label class="pill" style="margin-top:10px"><input type="checkbox" id="pe-co-on" ${c.on?'checked':''}> Weekly calorie check-ins</label>
+    <div class="grid2" style="margin-top:10px">
+      <div><label class="f" for="pe-co-day">Check-in day</label><select id="pe-co-day">${DOW_FULL.map((d,i)=>`<option value="${i}" ${i===c.day?'selected':''}>${d}</option>`).join('')}</select></div>
+      <div></div>
+      <div><label class="f" for="pe-co-min">Min calories (optional)</label><input type="text" inputmode="numeric" id="pe-co-min" value="${c.min??''}" placeholder="none"></div>
+      <div><label class="f" for="pe-co-max">Max calories (optional)</label><input type="text" inputmode="numeric" id="pe-co-max" value="${c.max??''}" placeholder="none"></div>
+      <div><label class="f" for="pe-co-step">Max change per week</label><input type="text" inputmode="numeric" id="pe-co-step" value="${c.step}"></div>
+      <div><label class="f" for="pe-co-gran">Smallest change</label><input type="text" inputmode="numeric" id="pe-co-gran" value="${c.gran}"></div>
+      <div><label class="f" for="pe-co-pp">Protein (${gU}, optional)</label><input type="text" inputmode="decimal" id="pe-co-pp" value="${show(c.pPerLb)}" placeholder="keep current"></div>
+      <div><label class="f" for="pe-co-fp">Fat (${gU}, optional)</label><input type="text" inputmode="decimal" id="pe-co-fp" value="${show(c.fPerLb)}" placeholder="keep current"></div>
+    </div>
+    <div class="small muted" style="margin-top:6px">Recommended macros use protein and fat per ${kg?'kg':'lb'} of trend weight, with carbs filling the rest. Leave them blank to keep your current protein and fat and change carbs only.</div>
+    <details style="margin-top:10px"><summary class="small" style="font-weight:550">Advanced: controller strengths</summary>
+      <div class="grid3" style="margin-top:8px">
+        <div><label class="f" for="pe-co-kp">P (kcal per lb/wk)</label><input type="text" inputmode="numeric" id="pe-co-kp" value="${c.kp}"></div>
+        <div><label class="f" for="pe-co-ki">I (kcal per lb)</label><input type="text" inputmode="numeric" id="pe-co-ki" value="${c.ki}"></div>
+        <div><label class="f" for="pe-co-kd">D (kcal per lb/wk)</label><input type="text" inputmode="numeric" id="pe-co-kd" value="${c.kd}"></div>
+      </div>
+      <div class="small muted" style="margin-top:6px">P reacts to how far your current rate is off target, I to how far you are from the target line, D to whether the rate error is already shrinking. 1 lb/wk ≈ 500 kcal/day.</div>
+    </details>
+  </details>`;
+}
+function readCoach(){
+  const kg=unit()==='kg', g=id=>{ const t=$(id).value.trim(); return t==='' ? null : parseNum(t); };
+  const c={ on:$('#pe-co-on').checked, day:Number($('#pe-co-day').value)||0 };
+  const chk=(v,lo,hi,name,opt)=>{ if(v==null){ return opt ? null : `${name} is required.`; } if(!isFinite(v)||v<lo||v>hi) return `${name} should be between ${lo} and ${hi}.`; return null; };
+  const min=g('#pe-co-min'), max=g('#pe-co-max'), step=g('#pe-co-step'), gran=g('#pe-co-gran'), pp=g('#pe-co-pp'), fp=g('#pe-co-fp'), kp=g('#pe-co-kp'), ki=g('#pe-co-ki'), kd=g('#pe-co-kd');
+  const e = chk(min,800,6000,'Min calories',true) || chk(max,800,6000,'Max calories',true) || chk(step,0,1000,'Max change per week') || chk(gran,1,500,'Smallest change')
+    || chk(pp,0,kg?6:3,'Protein',true) || chk(fp,0,kg?4:2,'Fat',true) || chk(kp,0,2000,'P') || chk(ki,0,500,'I') || chk(kd,0,1000,'D');
+  if(e) return { error:e };
+  if(min!=null && max!=null && min>=max) return { error:'Min calories should be below max calories.' };
+  if((pp==null)!==(fp==null)) return { error:'Set both protein and fat, or leave both blank.' };
+  Object.assign(c,{ min, max, step, gran, kp, ki, kd, pPerLb: pp==null?null:(kg?pp/LB_PER_KG:pp), fPerLb: fp==null?null:(kg?fp/LB_PER_KG:fp) });
+  return { coach:c };
+}
+
+/* ---------------- Calorie coaching card ---------------- */
+function latestFood(n){ const ks=Object.keys(S.entries).filter(k=>dnum(k)<=n && S.entries[k].m && S.entries[k].m.kcal!=null).sort(); return ks.length ? S.entries[ks[ks.length-1]].m : null; }
+function renderCoach(){
+  const el=$('#coach'); if(!el) return;
+  const j=M.curPhase, p=M.ph[j];
+  if(!p || !coachCfg(p).on){ el.classList.add('hidden'); return; }
+  el.classList.remove('hidden');
+  const c=coachCfg(p), u=unit(), fmtK=v=>Math.round(v).toLocaleString();
+  const hist=(S.checkins||[]).filter(x=>x.pid===p.id).slice(-4).reverse();
+  const histHtml = hist.length ? `<div class="small muted" style="margin-top:10px">Recent check-ins: ${hist.map(h=>{ const d=(h.after??h.before)-(h.before??0); return `${fmtD(dnum(h.date))} ${d? (d>0?'+':'−')+Math.abs(d) : 'hold'}`; }).join(' · ')}</div>` : '';
+  const k=M.KF.get(M.todayN);
+  const est = k ? `<div class="small muted" style="margin-top:4px">Current trend estimate: <b>${fmtRate(k.rateWk)}</b> ± ${toDisp(k.rateSdWk).toFixed(2)} ${u}/wk (target ${fmtRate(p.target)}).</div>` : '';
+  const pend=pendingCheckin(M,j);
+  if(!pend){
+    const nx=nextCheckin(M,j);
+    el.innerHTML=`<h2 style="margin-bottom:4px">Calorie coaching</h2><div class="small" style="color:var(--ink2)">Next check-in: <b>${nx?fmtD(nx,true):'—'}</b>${nx && nx<p.sn+7+7 && !hist.length ? ' (the first comes after a full week in this phase)' : ''}.</div>${est}${histHtml}`;
+    return;
+  }
+  const rec=coachRec(M,j,pend);
+  const head=`<div class="row" style="justify-content:space-between"><h2 style="margin:0">Check-in · ${fmtD(pend,true)}</h2><span class="badge">${esc(p.name)}</span></div>`;
+  if(rec.kind==='nokcal'){ el.innerHTML=`${head}<div class="small" style="margin-top:8px">${esc(rec.why)}</div>`; return; }
+  const curM=latestFood(M.todayN);
+  const mac = rec.kind==='change' ? recMacros(rec.next, c, rec.trendW, curM) : null;
+  const macHtml = mac && mac.p!=null ? `<div class="small" style="margin-top:4px">Macros: <b>P ${mac.p}</b> · <b>C ${mac.c}</b> · <b>F ${mac.f}</b> g ${mac.src==='carbs'?'<span class="muted">(carbs changed only)</span>':''}</div>` : (mac && mac.warn ? `<div class="small" style="color:var(--danger);margin-top:4px">${esc(mac.warn)}</div>` : '');
+  const sg=v=>(v>=0?'+':'−')+Math.abs(Math.round(v));
+  const details = rec.P!=null ? `<details style="margin-top:10px"><summary class="small" style="font-weight:550">Details</summary><div class="small" style="margin-top:6px;color:var(--ink2);font-variant-numeric:tabular-nums">
+      Rate ${fmtRate(rec.rate)} ± ${toDisp(rec.rateSd).toFixed(2)} ${u}/wk vs target ${fmtRate(p.target)} · gap to target line ${rec.gap>=0?'+':'−'}${fmtW(Math.abs(rec.gap))} ${u}<br>
+      P ${sg(rec.P)} · I ${rec.idOn?sg(rec.I):'off'} · D ${rec.idOn?sg(rec.D):'off'} → ${sg(rec.raw)} kcal → capped ±${c.step}, rounded to ${c.gran}${c.min!=null||c.max!=null?`, within ${c.min??'—'}–${c.max??'—'}`:''} → <b>${sg(rec.delta)}</b><br>
+      ${!rec.full ? 'Gentle mode: P only at half strength until your cycle pattern is personalised.' : (!rec.idOn ? `I and D switch on from week ${COACH_ID_WEEK} of the phase.` : '')}
+    </div></details>` : '';
+  if(rec.kind==='hold'){
+    el.innerHTML=`${head}<div style="margin-top:8px;font-size:20px;font-weight:650">Hold at ${fmtK(rec.cur)} kcal</div><div class="small" style="color:var(--ink2);margin-top:4px">${esc(rec.why)}</div>${details}
+      <div class="row" style="margin-top:12px"><button class="btn" id="co-ok">OK</button></div>${histHtml}`;
+    $('#co-ok').onclick=()=>recordCheckin(p, pend, rec, rec.cur, 'kept');
+    return;
+  }
+  el.innerHTML=`${head}<div style="margin-top:8px;font-size:22px;font-weight:650">${fmtK(rec.next)} kcal <span style="font-size:15px;color:var(--ink2);font-weight:550">(${sg(rec.delta)} from ${fmtK(rec.cur)})</span></div>
+    ${macHtml}<div class="small" style="color:var(--ink2);margin-top:6px">${esc(rec.why)}</div>${details}
+    <div class="row" style="margin-top:12px"><button class="btn grow" id="co-use">Use this</button><button class="btn ghost" id="co-keep">Keep ${fmtK(rec.cur)}</button></div>
+    <div class="small muted" style="margin-top:6px">“Use this” sets today’s food to these numbers. You can still change them in the daily form, and whatever you log is what next week’s check-in starts from.</div>${histHtml}`;
+  $('#co-use').onclick=()=>{
+    const t=todayStr(), e=S.entries[t]||(S.entries[t]={ w:null, ps:false, pe:false });
+    const old=e.m||curM||{};
+    e.m={ kcal:rec.next, p: mac&&mac.p!=null?mac.p:(old.p??null), c: mac&&mac.c!=null?mac.c:(old.c??null), f: mac&&mac.f!=null?mac.f:(old.f??null) };
+    recordCheckin(p, pend, rec, rec.next, 'used');
+  };
+  $('#co-keep').onclick=()=>recordCheckin(p, pend, rec, rec.cur, 'kept');
+}
+function recordCheckin(p, d, rec, after, chosen){
+  S.checkins=(S.checkins||[]).filter(x=>!(x.pid===p.id && x.date===dstr(d)));
+  S.checkins.push({ pid:p.id, date:dstr(d), before:rec.cur, rec:rec.next??rec.cur, after, chosen, why:rec.why,
+    terms: rec.P!=null ? { p:Math.round(rec.P), i:Math.round(rec.I), d:Math.round(rec.D), rate:+rec.rate.toFixed(3), gap:+rec.gap.toFixed(2) } : null });
+  save(); renderAll(); toast(chosen==='used' ? `Calories set to ${Math.round(after).toLocaleString()}` : 'Check-in saved');
 }
 
 /* ---------------- History ---------------- */
@@ -1406,7 +1664,61 @@ if('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) navigato
 renderAll();
 window.CWT = { get S(){ return S; }, get M(){ return M; }, computeModel, cyclePos, renderAll,
   // test hook: fit a demo dataset without touching storage or the screen
-  simulate(opts, jp){ const oldS=S, oldJ=JUMP_PENALTY; try{ S=makeDemo(opts); if(jp!=null) JUMP_PENALTY=jp; return computeModel(); } finally { S=oldS; JUMP_PENALTY=oldJ; } } };
+  simulate(opts, jp){ const oldS=S, oldJ=JUMP_PENALTY; try{ S=makeDemo(opts); if(jp!=null) JUMP_PENALTY=jp; return computeModel(); } finally { S=oldS; JUMP_PENALTY=oldJ; } },
+  simCoach };
+
+// Closed-loop test: a simulated body (true maintenance, adaptive, own cycle swing,
+// cheat meals, noise) follows the weekly recommendations through three phases.
+function simCoach(o={}){
+  const oldS=S, oldT=TODAY_OVERRIDE, oldDrift=KF_RATE_DRIFT;
+  let seed=o.seed??1; const rnd=()=>{ seed|=0; seed=seed+0x6D2B79F5|0; let t=Math.imul(seed^seed>>>15,1|seed); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; };
+  const gauss=()=>{ let u=0,v=0; while(!u) u=rnd(); while(!v) v=rnd(); return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v); };
+  try{
+    if(o.drift!=null) KF_RATE_DRIFT=o.drift;
+    const d0=dnum('2025-01-05'), N=o.days??252, tdee0=o.tdee??1800, w0=o.w0??128;
+    const phases=o.phases??[{name:'Maintain',at:0,target:0,kcal:1700},{name:'Cut',at:84,target:-0.5,dk:-250},{name:'Maintain',at:168,target:0,dk:+250}];
+    const coach=Object.assign({}, COACH_DEFAULTS, o.coach||{});
+    S=defaults(); S.settings.baseCycleLen=32; S.mealTypes=[];
+    const starts=[]; for(let n=-12; n<N+40; n+=29+Math.floor(rnd()*6)) starts.push(n);
+    const eff=(n)=>{ let i=-1; for(let j=0;j<starts.length;j++) if(starts[j]<=n) i=j; const L=starts[i+1]-starts[i], k=n-starts[i]; const c=cyclePos(k,L,32,7,7);
+      const dd=(a,b)=>{ const d=Math.abs(a-b); return Math.min(d,32-d); }; return (o.bump??1.6)*Math.exp(-Math.pow(dd(c,31),2)/(2*2.2*2.2)) - 0.6*Math.exp(-Math.pow(dd(c,10),2)/(2*3*3)); };
+    const meals=[]; for(let n=5;n<N;n+=5+Math.floor(rnd()*5)) meals.push(n);
+    let W=w0, kcal=null, flips=0, lastDir=0, maxStep=0; const log=[]; const trueW=[];
+    for(let n=0;n<N;n++){
+      TODAY_OVERRIDE=dstr(d0+n);
+      const ph=phases.filter(p=>p.at===n)[0];
+      if(ph){ kcal = ph.kcal!=null ? ph.kcal : kcal+ph.dk; S.phases.push({ id:'p'+n, name:ph.name, start:dstr(d0+n), target:ph.target, coach }); }
+      // body: adaptive maintenance (~10 kcal per lb), intake with adherence noise
+      const tdee=tdee0+10*(W-w0), intake=kcal+(o.adh??60)*gauss();
+      W += (intake-tdee)/KCAL_PER_LB;
+      let spike=0, keep=0; for(const m of meals){ const h=(n-m)*24-12; if(h>0){ keep+=0.15; if(h<=120) spike+=2.1*Math.exp(-h/30); } }
+      trueW.push(W+keep);   // lasting cheat-meal gain is real weight
+      const obs=W+keep+eff(n)+spike+0.55*gauss();
+      const e={ w: rnd()<0.1 ? null : Math.round(obs*5)/5, ps: starts.includes(n), pe:false, m:{ kcal } };
+      if(starts.includes(n) && n<0){}
+      if(meals.includes(n) && o.logMeals!==false) e.cm=[{ t:'generic', s:'d' }];
+      S.entries[dstr(d0+n)]=e;
+      if(n===0) for(const s0 of starts) if(s0<0) S.entries[dstr(d0+s0)]={ w:null, ps:true, pe:false };
+      if(dow(d0+n)===0){
+        const M2=computeModel(), j=M2.curPhase, pend=pendingCheckin(M2,j);
+        if(pend!=null){
+          const rec=coachRec(M2,j,pend);
+          let after=rec.next??kcal;
+          if(o.override && rnd()<o.override) after = (rec.next??kcal) + (rnd()<0.5?-100:100);
+          if(after!==kcal){ const dir=Math.sign(after-kcal); if(lastDir && dir!==lastDir) flips++; lastDir=dir; maxStep=Math.max(maxStep,Math.abs(after-kcal)); }
+          log.push({ n, kind:rec.kind, kcal, next:after, rate:rec.rate!=null?+rec.rate.toFixed(2):null, gap:rec.gap!=null?+rec.gap.toFixed(2):null });
+          S.checkins.push({ pid:S.phases[j].id, date:dstr(pend), before:kcal, rec:rec.next??kcal, after, chosen:'used', why:'' });
+          kcal=after;
+        }
+      }
+    }
+    // score each phase on the TRUE body: rate over its last 4 weeks, and end gap to a target line from its true start
+    const score=phases.map((p,i)=>{ const a=p.at, b=(phases[i+1]?.at??N)-1;
+      const rate=(trueW[b]-trueW[b-28])/4, gap=trueW[b]-(trueW[a]+p.target*(b-a)/7);
+      return { name:p.name, target:p.target, rateLast4:+rate.toFixed(3), endGap:+gap.toFixed(2) }; });
+    return { score, flips, maxStep, finalKcal:kcal, log };
+  } finally { S=oldS; TODAY_OVERRIDE=oldT; KF_RATE_DRIFT=oldDrift; }
+}
 })();
 </script>
 </body>

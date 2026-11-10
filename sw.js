@@ -1,7 +1,7 @@
 // Offline support for the Home Screen app. Serves the cached page instantly,
 // refreshes it from the network in the background. Data is NOT stored here
 // (it lives in the page's localStorage); this only caches the app itself.
-const CACHE = 'cycle-weight-v1';
+const CACHE = 'cycle-weight-v2';
 
 self.addEventListener('install', e => {
   self.skipWaiting();
