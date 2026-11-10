@@ -1659,7 +1659,7 @@ document.addEventListener('visibilitychange',()=>{ if(!document.hidden && S && M
   g.strokeStyle='#fff'; g.lineWidth=11; g.beginPath(); g.moveTo(24,100); g.lineTo(156,66); g.stroke();
   const l=document.createElement('link'); l.rel='apple-touch-icon'; l.href=c.toDataURL('image/png'); document.head.appendChild(l);
   const f=document.createElement('link'); f.rel='icon'; f.href=l.href; document.head.appendChild(f); }catch(e){} })();
-if('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) navigator.serviceWorker.register('sw.js').catch(()=>{});
+if('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) navigator.serviceWorker.register('sw.js', { updateViaCache:'none' }).catch(()=>{});
 
 renderAll();
 window.CWT = { get S(){ return S; }, get M(){ return M; }, computeModel, cyclePos, renderAll,

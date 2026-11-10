@@ -65,9 +65,10 @@ Data lives only in the Home Screen app on her phone. Deleting the icon deletes t
 ## Updating the app later
 
 Commit and push to `main`; GitHub Pages redeploys in about a minute. Her data is
-untouched by updates because it lives on the phone, not in the file. With `sw.js`,
-the new version shows the second time she opens the app. If a change ever needs
-a fresh cache, bump `CACHE` in `sw.js` (e.g. `cycle-weight-v2`).
+untouched by updates because it lives on the phone, not in the file. `sw.js` is
+network-first, so when she's online the next open loads the latest version (it
+falls back to the saved copy offline). If an update seems stuck, fully close the
+app and reopen it.
 
 ## Preview with fake data
 
