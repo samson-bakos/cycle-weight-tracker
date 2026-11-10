@@ -1353,7 +1353,11 @@ async function backup(){
   let file=null; try{ file=new File([json],name,{type:'application/json'}); }catch(e){}
   try{
     if(file && navigator.canShare && navigator.canShare({files:[file]})){
-      await navigator.share({files:[file], title:'Cycle Weight backup'});
+      // The iOS share sheet leads with contacts/apps; say where "Save to Files" is first.
+      const go = await dialog({ title:'Save your backup', ok:'Continue',
+        body:`The next screen is the share menu. Skip the contacts and apps:<br><br>1. Tap <b>Save to Files</b> (bottom row; swipe left if you don’t see it).<br>2. Choose <b>iCloud Drive</b> (any folder).<br>3. Tap <b>Save</b>.<br><br>To restore later: Settings & backup → Restore from backup → pick the newest file.` });
+      if(!go) return;
+      await navigator.share({files:[file]});
       markBackup(); return;
     }
   }catch(e){ if(e && e.name==='AbortError') return; }
