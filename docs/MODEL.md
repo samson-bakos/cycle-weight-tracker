@@ -76,6 +76,17 @@ D = −Kd · (rate error − last week's)      Kd = 25 kcal/day per lb/wk   (fro
   - a change under the granularity
 - First check-in is ≥7 days into a phase.
 
+### Calorie-schedule phases (`mode: 'kcal'`)
+Open loop, with no PID and no target line.
+- **Each check-in:** calories change by `schedStep`, stop at `schedEnd`, and stay
+  within min/max.
+- **Guardrail (optional):** pauses that week's change while the Kalman rate is
+  past the limit, i.e. above +guard for an increasing schedule or below −guard
+  for a decreasing one. The ramp resumes once the rate is back inside it.
+- **Holds:** the guardrail needs ≥4 weigh-ins and a clear trend, otherwise that
+  week holds. With no guardrail, weigh-ins aren't required.
+- **Weight:** still fitted and shown, for information.
+
 ### Tuning
 `CWT.simCoach(opts)` runs a closed loop over 8 months:
 - maintenance 1,800, adaptive at about 10 kcal per lb

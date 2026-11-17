@@ -21,8 +21,9 @@
       cm: [{ t: 'generic'|typeId, s: 'b'|'l'|'d' }]   // cheat meals eaten that day, optional
     }
   },
-  phases: [{ id, name, start: 'YYYY-MM-DD', target /* lb/wk */, coach? }],
-  // coach: { on, day /* 0=Sun */, min, max, step, gran, pPerLb, fPerLb, kp, ki, kd }
+  phases: [{ id, name, start: 'YYYY-MM-DD', target /* lb/wk */, mode? /* 'kcal' = calorie schedule */, coach? }],
+  // coach: { on, day /* 0=Sun */, min, max, step, gran, pPerLb, fPerLb, kp, ki, kd,
+  //          schedStep /* kcal/wk, ± */, schedEnd, guard /* lb/wk, magnitude */ }
   mealTypes: [{ id, name }],
   checkins: [{ pid, date, before, rec, after, chosen: 'used'|'kept', why, terms: { p, i, d, rate, gap } }]
 }

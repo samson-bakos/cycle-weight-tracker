@@ -24,8 +24,10 @@ is never uploaded. Backups are files she saves herself.
 ## Use
 
 - **Daily:** weight, period start/end, food (carries forward), cheat meal.
-- **Phases:** goal rate (lb/week) plus calorie-coaching settings. Starting
-  calories are set in Food on the phase's first day.
+- **Phases:** either a **weight target** (lb/week; weekly PID check-ins adjust
+  calories) or a **calorie schedule** (e.g. reverse diet: +50 kcal/week to an end
+  value, optional guardrail that pauses the ramp if weight runs ahead; no PID).
+  Starting calories are set in Food on the phase's first day.
 - **Check-ins:** weekly card with recommended calories and macros. **Use this**
   or **Keep**; whatever she logs is the next starting point.
 - **Backup:** Settings & backup → Back up now → Save to Files → iCloud Drive.
