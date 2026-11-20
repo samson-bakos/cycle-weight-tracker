@@ -77,15 +77,25 @@ D = −Kd · (rate error − last week's)      Kd = 25 kcal/day per lb/wk   (fro
 - First check-in is ≥7 days into a phase.
 
 ### Calorie-schedule phases (`mode: 'kcal'`)
-Open loop, with no PID and no target line.
-- **Each check-in:** calories change by `schedStep`, stop at `schedEnd`, and stay
-  within min/max.
-- **Guardrail (optional):** pauses that week's change while the Kalman rate is
-  past the limit, i.e. above +guard for an increasing schedule or below −guard
-  for a decreasing one. The ramp resumes once the rate is back inside it.
-- **Holds:** the guardrail needs ≥4 weigh-ins and a clear trend, otherwise that
-  week holds. With no guardrail, weigh-ins aren't required.
-- **Weight:** still fitted and shown, for information.
+No target line. Each check-in picks one of three cases, in this order:
+
+1. **Guardrail (optional):** if the Kalman rate is past the limit (above +guard
+   for an increasing schedule, below −guard for a decreasing one), the change
+   is 0. It needs ≥4 weigh-ins and a clear trend, otherwise that week holds.
+2. **PID backstop:** a hold-steady check using P and D only, targeting 0 lb/wk,
+   with the same strengths, gentle mode, ±max step cap and rounding as weight
+   phases. If its change goes further in the schedule's direction than
+   `schedStep`, it's used instead. Example: a +50 schedule while she's losing
+   becomes +75.
+3. **Schedule:** otherwise, `schedStep`.
+
+The result is clamped to `schedEnd` and min/max. Without enough data for the
+check, the schedule applies.
+
+In simulation (true maintenance 2,500, reverse starting at 1,700, +50/wk,
++0.2 guardrail), it went +100 and +75 while losing about 1 lb/wk, then +50,
+then held once gaining over +0.2. Weight is still fitted and shown, for
+information.
 
 ### Tuning
 `CWT.simCoach(opts)` runs a closed loop over 8 months:

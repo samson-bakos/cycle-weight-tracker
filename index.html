@@ -682,16 +682,31 @@ function schedRec(M, j, d, base){
     const over = up ? k.rateWk>c.guard : k.rateWk<-c.guard;
     if(over) return Object.assign(hold(`Paused: trend ${fmtRate(k.rateWk)} ${u}/wk is past your ${up?'+':'−'}${toDisp(c.guard).toFixed(2)} ${u}/wk guardrail. The schedule resumes once it’s back under.`), { paused:true });
   }
-  let next=cur+step;
+  // PID backstop: what would the loop recommend to hold her weight steady (0 lb/wk)?
+  // P and D only (no target line → no gap term). If that moves calories further in the
+  // schedule's direction than the scheduled step, use it instead.
+  let move=step, boosted=false, P=null, D=null, raw=null;
+  const n7=M.days.filter(x=>x.n>d-7 && x.n<=d).length;
+  if(k && n7>=COACH_MIN_WEIGHINS && k.rateSdWk<=COACH_MAX_RATE_SD){
+    const full=M.personalised;
+    P=-c.kp*k.rateWk; if(!full) P*=0.5;
+    D=0; if(full && week>=COACH_ID_WEEK){ const kp=M.KF.get(d-7); if(kp) D=-c.kd*(k.rateWk-kp.rateWk); }
+    raw=P+D;
+    let pid=Math.max(-c.step, Math.min(c.step, raw)); pid=Math.round(pid/c.gran)*c.gran;
+    if(Math.sign(pid)===Math.sign(step||1) && Math.abs(pid)>Math.abs(step)){ move=pid; boosted=true; }
+  }
+  let next=cur+move;
   if(c.schedEnd!=null) next = up ? Math.min(next,c.schedEnd) : Math.max(next,c.schedEnd);
   if(c.min!=null) next=Math.max(c.min,next);
   if(c.max!=null) next=Math.min(c.max,next);
   const delta=next-cur;
   if(delta===0) return hold('Already at your calorie limit. Holding.');
   const left = c.schedEnd!=null && step ? Math.ceil(Math.abs(c.schedEnd-next)/Math.abs(step)) : null;
-  const why = `Week ${week} of the schedule (${step>0?'+':'−'}${Math.abs(step)} kcal/week${c.schedEnd!=null?` to ${Math.round(c.schedEnd).toLocaleString()}`:''}).`
-    + (k ? ` Trend ${fmtRate(k.rateWk)} ${u}/wk.` : '');
-  return Object.assign(out,{ kind:'change', delta, next, left, why });
+  const sg=v=>(v>=0?'+':'−')+Math.abs(Math.round(v));
+  const why = boosted
+    ? `Schedule says ${sg(step)}, but your trend is ${fmtRate(k.rateWk)} ${u}/wk. Holding your weight steady needs about ${sg(move)}, so ${sg(delta)} this week.`
+    : `Week ${week} of the schedule (${sg(step)} kcal/week${c.schedEnd!=null?` to ${Math.round(c.schedEnd).toLocaleString()}`:''}).` + (k ? ` Trend ${fmtRate(k.rateWk)} ${u}/wk.` : '');
+  return Object.assign(out,{ kind:'change', delta, next, left, why, boosted, P, D, raw });
 }
 function recMacros(kcal, cfg, trendW, curM){
   const r5=v=>Math.round(v/5)*5;
@@ -1475,7 +1490,7 @@ function phaseEditor(p){
       </div>
       <label class="f" for="pe-co-guard" style="margin-top:10px">Pause the weekly change if the trend is <span id="pe-guard-w">${peSDir==='down'?'losing':'gaining'}</span> more than (${kg?'kg':'lb'}/wk, optional)</label>
       <input type="text" inputmode="decimal" id="pe-co-guard" value="${cc.guard!=null?+(kg?cc.guard/LB_PER_KG:cc.guard).toFixed(2):''}" placeholder="no guardrail">
-      <div class="small muted" style="margin-top:6px">No PID here: calories move by the schedule each check-in. Weight is tracked but not targeted. Set starting calories in Food on the first day.</div>
+      <div class="small muted" style="margin-top:6px">Calories move by the schedule each check-in. If you’re losing weight and holding steady would need a bigger change, the coach uses that instead (up to your max change per week). The guardrail always wins. Set starting calories in Food on the first day.</div>
     </div>
     ${coachFields(cc)}
     <div class="err" id="pe-err"></div>
@@ -1528,13 +1543,13 @@ function coachFields(c){
       <div></div>
       <div><label class="f" for="pe-co-min">Min calories (optional)</label><input type="text" inputmode="numeric" id="pe-co-min" value="${c.min??''}" placeholder="none"></div>
       <div><label class="f" for="pe-co-max">Max calories (optional)</label><input type="text" inputmode="numeric" id="pe-co-max" value="${c.max??''}" placeholder="none"></div>
-      <div class="pe-w"><label class="f" for="pe-co-step">Max change per week</label><input type="text" inputmode="numeric" id="pe-co-step" value="${c.step}"></div>
-      <div class="pe-w"><label class="f" for="pe-co-gran">Smallest change</label><input type="text" inputmode="numeric" id="pe-co-gran" value="${c.gran}"></div>
+      <div><label class="f" for="pe-co-step">Max change per week</label><input type="text" inputmode="numeric" id="pe-co-step" value="${c.step}"></div>
+      <div><label class="f" for="pe-co-gran">Smallest change</label><input type="text" inputmode="numeric" id="pe-co-gran" value="${c.gran}"></div>
       <div><label class="f" for="pe-co-pp">Protein (${gU}, optional)</label><input type="text" inputmode="decimal" id="pe-co-pp" value="${show(c.pPerLb)}" placeholder="keep current"></div>
       <div><label class="f" for="pe-co-fp">Fat (${gU}, optional)</label><input type="text" inputmode="decimal" id="pe-co-fp" value="${show(c.fPerLb)}" placeholder="keep current"></div>
     </div>
     <div class="small muted" style="margin-top:6px">Recommended macros use protein and fat per ${kg?'kg':'lb'} of trend weight, with carbs filling the rest. Leave them blank to keep your current protein and fat and change carbs only.</div>
-    <details class="pe-w" style="margin-top:10px"><summary class="small" style="font-weight:550">Advanced: controller strengths</summary>
+    <details style="margin-top:10px"><summary class="small" style="font-weight:550">Advanced: controller strengths</summary>
       <div class="grid3" style="margin-top:8px">
         <div><label class="f" for="pe-co-kp">P (kcal per lb/wk)</label><input type="text" inputmode="numeric" id="pe-co-kp" value="${c.kp}"></div>
         <div><label class="f" for="pe-co-ki">I (kcal per lb)</label><input type="text" inputmode="numeric" id="pe-co-ki" value="${c.ki}"></div>
@@ -1592,7 +1607,11 @@ function renderCoach(){
   const mac = rec.kind==='change' ? recMacros(rec.next, c, rec.trendW, curM) : null;
   const macHtml = mac && mac.p!=null ? `<div class="small" style="margin-top:4px">Macros: <b>P ${mac.p}</b> · <b>C ${mac.c}</b> · <b>F ${mac.f}</b> g ${mac.src==='carbs'?'<span class="muted">(carbs changed only)</span>':''}</div>` : (mac && mac.warn ? `<div class="small" style="color:var(--danger);margin-top:4px">${esc(mac.warn)}</div>` : '');
   const sg=v=>(v>=0?'+':'−')+Math.abs(Math.round(v));
-  const details = rec.P!=null ? `<details style="margin-top:10px"><summary class="small" style="font-weight:550">Details</summary><div class="small" style="margin-top:6px;color:var(--ink2);font-variant-numeric:tabular-nums">
+  const details = rec.sched ? (rec.P!=null ? `<details style="margin-top:10px"><summary class="small" style="font-weight:550">Details</summary><div class="small" style="margin-top:6px;color:var(--ink2);font-variant-numeric:tabular-nums">
+      Schedule ${sg(rec.step)} · trend ${fmtRate(rec.rate)} ± ${toDisp(rec.rateSd).toFixed(2)} ${u}/wk<br>
+      Hold-steady check: P ${sg(rec.P)} · D ${sg(rec.D)} → ${sg(rec.raw)} kcal (capped ±${c.step}, rounded to ${c.gran}) → ${rec.boosted?'<b>used</b>, bigger than the schedule':'schedule used'}
+      ${!M.personalised ? '<br>Gentle mode: half-strength P until your cycle pattern is personalised.' : ''}
+    </div></details>` : '') : rec.P!=null ? `<details style="margin-top:10px"><summary class="small" style="font-weight:550">Details</summary><div class="small" style="margin-top:6px;color:var(--ink2);font-variant-numeric:tabular-nums">
       Rate ${fmtRate(rec.rate)} ± ${toDisp(rec.rateSd).toFixed(2)} ${u}/wk vs target ${fmtRate(p.target)} · gap to target line ${rec.gap>=0?'+':'−'}${fmtW(Math.abs(rec.gap))} ${u}<br>
       P ${sg(rec.P)} · I ${rec.idOn?sg(rec.I):'off'} · D ${rec.idOn?sg(rec.D):'off'} → ${sg(rec.raw)} kcal → capped ±${c.step}, rounded to ${c.gran}${c.min!=null||c.max!=null?`, within ${c.min??'—'}–${c.max??'—'}`:''} → <b>${sg(rec.delta)}</b><br>
       ${!rec.full ? 'Gentle mode: P only at half strength until your cycle pattern is personalised.' : (!rec.idOn ? `I and D switch on from week ${COACH_ID_WEEK} of the phase.` : '')}
@@ -1603,7 +1622,7 @@ function renderCoach(){
     $('#co-ok').onclick=()=>recordCheckin(p, pend, rec, rec.cur, 'kept');
     return;
   }
-  const schedLine = rec.sched ? `<div class="small" style="margin-top:2px;color:var(--ink2)">Week ${rec.week} · ${fmtK(rec.cur)} → ${fmtK(rec.next)} (${sg(rec.delta)} scheduled)${rec.left!=null?` · ${rec.left===0?'end reached':`${plural(rec.left,'week')} to go`}`:''}</div>` : '';
+  const schedLine = rec.sched ? `<div class="small" style="margin-top:2px;color:var(--ink2)">Week ${rec.week} · ${fmtK(rec.cur)} → ${fmtK(rec.next)} (${rec.boosted ? `${sg(rec.delta)}: above the ${sg(rec.step)} schedule because you’re ${rec.step>=0?'losing':'gaining'}` : `${sg(rec.delta)} scheduled`})${rec.left!=null?` · ${rec.left===0?'end reached':`${plural(rec.left,'week')} to go`}`:''}</div>` : '';
   el.innerHTML=`${head}<div style="margin-top:8px;font-size:22px;font-weight:650">${fmtK(rec.next)} kcal <span style="font-size:15px;color:var(--ink2);font-weight:550">(${sg(rec.delta)} from ${fmtK(rec.cur)})</span></div>${schedLine}
     ${macHtml}<div class="small" style="color:var(--ink2);margin-top:6px">${esc(rec.why)}</div>${details}
     <div class="row" style="margin-top:12px"><button class="btn grow" id="co-use">Use this</button><button class="btn ghost" id="co-keep">Keep ${fmtK(rec.cur)}</button></div>
